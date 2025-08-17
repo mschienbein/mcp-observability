@@ -100,31 +100,37 @@ class LangfuseStack(Stack):
         )
 
         # --- ClickHouse (Langfuse v3) placeholders in Secrets Manager
-        # Provide empty placeholders so you can fill values post-deploy.
+        # Optionally pre-populate via CDK context: -c CLICKHOUSE_URL=... -c CLICKHOUSE_USER=... etc.
+        ch_url_ctx = self.node.try_get_context("CLICKHOUSE_URL")
+        ch_user_ctx = self.node.try_get_context("CLICKHOUSE_USER")
+        ch_pass_ctx = self.node.try_get_context("CLICKHOUSE_PASSWORD")
+        ch_db_ctx = self.node.try_get_context("CLICKHOUSE_DB")
+        ch_migr_url_ctx = self.node.try_get_context("CLICKHOUSE_MIGRATION_URL")
+        ch_migr_ssl_ctx = self.node.try_get_context("CLICKHOUSE_MIGRATION_SSL")
         clickhouse_url_secret = secretsmanager.Secret(
             self,
             "ClickhouseUrl",
             description="CLICKHOUSE_URL for Langfuse v3 (e.g., https://<host>:8443/?ssl=true)",
-            secret_string_value=SecretValue.unsafe_plain_text("TO_BE_SET"),
+            secret_string_value=SecretValue.unsafe_plain_text(ch_url_ctx or "TO_BE_SET"),
         )
         clickhouse_user_secret = secretsmanager.Secret(
             self,
             "ClickhouseUser",
             description="CLICKHOUSE_USER for Langfuse v3",
-            secret_string_value=SecretValue.unsafe_plain_text("TO_BE_SET"),
+            secret_string_value=SecretValue.unsafe_plain_text(ch_user_ctx or "TO_BE_SET"),
         )
         clickhouse_password_secret = secretsmanager.Secret(
             self,
             "ClickhousePassword",
             description="CLICKHOUSE_PASSWORD for Langfuse v3",
-            secret_string_value=SecretValue.unsafe_plain_text("TO_BE_SET"),
+            secret_string_value=SecretValue.unsafe_plain_text(ch_pass_ctx or "TO_BE_SET"),
         )
         # Optional, used for migrations if different from CLICKHOUSE_URL
         clickhouse_migration_url_secret = secretsmanager.Secret(
             self,
             "ClickhouseMigrationUrl",
             description="CLICKHOUSE_MIGRATION_URL for Langfuse v3 (optional)",
-            secret_string_value=SecretValue.unsafe_plain_text("TO_BE_SET"),
+            secret_string_value=SecretValue.unsafe_plain_text(ch_migr_url_ctx or "TO_BE_SET"),
         )
 
         # Optional DB name (defaults to 'default')
@@ -132,14 +138,14 @@ class LangfuseStack(Stack):
             self,
             "ClickhouseDb",
             description="CLICKHOUSE_DB for Langfuse v3 (default: 'default')",
-            secret_string_value=SecretValue.unsafe_plain_text("default"),
+            secret_string_value=SecretValue.unsafe_plain_text(ch_db_ctx or "default"),
         )
         # Migration SSL toggle ("true" | "false"), not sensitive but stored for consistency
         clickhouse_migration_ssl_secret = secretsmanager.Secret(
             self,
             "ClickhouseMigrationSsl",
             description="CLICKHOUSE_MIGRATION_SSL for Langfuse v3 (\"true\" | \"false\")",
-            secret_string_value=SecretValue.unsafe_plain_text("true"),
+            secret_string_value=SecretValue.unsafe_plain_text(ch_migr_ssl_ctx or "true"),
         )
 
         # --- ElastiCache Redis (single node) for Langfuse
@@ -193,6 +199,8 @@ class LangfuseStack(Stack):
                     # App config
                     "LANGFUSE_TRACING_ENVIRONMENT": "prod",
                     "NODE_OPTIONS": "--max-old-space-size=3072",
+                    # Allow startup without ClickHouse secrets populated
+                    "LANGFUSE_AUTO_CLICKHOUSE_MIGRATION_DISABLED": "true",
                     # Langfuse v3 S3 event uploads
                     "LANGFUSE_S3_EVENT_UPLOAD_BUCKET": events_bucket.bucket_name,
                     "LANGFUSE_S3_EVENT_UPLOAD_REGION": cdk.Aws.REGION,
@@ -214,9 +222,18 @@ class LangfuseStack(Stack):
                     "CLICKHOUSE_MIGRATION_SSL": ecs.Secret.from_secrets_manager(clickhouse_migration_ssl_secret),
                 },
             ),
-            health_check_grace_period=Duration.seconds(60),
+            health_check_grace_period=Duration.seconds(900),
         )
-        web.target_group.configure_health_check(path="/api/health", port="3000", healthy_http_codes="200")
+        web.target_group.configure_health_check(
+            path="/api/health",
+            port="3000",
+            healthy_http_codes="200-399",
+            interval=Duration.seconds(10),
+            healthy_threshold_count=2,
+            unhealthy_threshold_count=3,
+        )
+        # Speed up deployments by shortening drain time
+        web.target_group.set_attribute("deregistration_delay.timeout_seconds", "30")
         # Set NEXTAUTH_URL now that the load balancer is created
         if web.task_definition.default_container:
             web.task_definition.default_container.add_environment(
@@ -263,6 +280,8 @@ class LangfuseStack(Stack):
                 "REDIS_CONNECTION_STRING": f"redis://{redis.attr_redis_endpoint_address}:{redis.attr_redis_endpoint_port}",
                 "LANGFUSE_TRACING_ENVIRONMENT": "prod",
                 "NODE_OPTIONS": "--max-old-space-size=3072",
+                # Allow startup without ClickHouse secrets populated
+                "LANGFUSE_AUTO_CLICKHOUSE_MIGRATION_DISABLED": "true",
                 # Langfuse v3 S3 event uploads
                 "LANGFUSE_S3_EVENT_UPLOAD_BUCKET": events_bucket.bucket_name,
                 "LANGFUSE_S3_EVENT_UPLOAD_REGION": cdk.Aws.REGION,
