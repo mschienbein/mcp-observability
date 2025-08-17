@@ -1,0 +1,13 @@
+{
+  "name": "mcp-observability-root",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "ui:dev": "npm --prefix ui run dev",
+    "ui:build": "npm --prefix ui run build",
+    "ui:preview": "npm --prefix ui run preview",
+    "server:tools": "uv run python server/tools_server/main.py",
+    "server:feedback": "uv run python server/feedback_server/main.py"
+  }
+}

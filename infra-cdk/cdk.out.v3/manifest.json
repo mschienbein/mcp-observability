@@ -1,0 +1,521 @@
+{
+  "version": "36.0.0",
+  "artifacts": {
+    "LangfuseStack.assets": {
+      "type": "cdk:asset-manifest",
+      "properties": {
+        "file": "LangfuseStack.assets.json",
+        "requiresBootstrapStackVersion": 6,
+        "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/mcpobs/version"
+      }
+    },
+    "LangfuseStack": {
+      "type": "aws:cloudformation:stack",
+      "environment": "aws://032360566970/us-east-1",
+      "properties": {
+        "templateFile": "LangfuseStack.template.json",
+        "terminationProtection": false,
+        "validateOnSynth": false,
+        "assumeRoleArn": "arn:${AWS::Partition}:iam::032360566970:role/cdk-mcpobs-deploy-role-032360566970-us-east-1",
+        "cloudFormationExecutionRoleArn": "arn:${AWS::Partition}:iam::032360566970:role/cdk-mcpobs-cfn-exec-role-032360566970-us-east-1",
+        "stackTemplateAssetObjectUrl": "s3://cdk-mcpobs-assets-032360566970-us-east-1/7565111f9b313331fec6d95d0d0b31e3c9cf3a4d3dab623adcc67e31ad565ec9.json",
+        "requiresBootstrapStackVersion": 6,
+        "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/mcpobs/version",
+        "additionalDependencies": [
+          "LangfuseStack.assets"
+        ],
+        "lookupRole": {
+          "arn": "arn:${AWS::Partition}:iam::032360566970:role/cdk-mcpobs-lookup-role-032360566970-us-east-1",
+          "requiresBootstrapStackVersion": 8,
+          "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/mcpobs/version"
+        }
+      },
+      "dependencies": [
+        "LangfuseStack.assets"
+      ],
+      "metadata": {
+        "/LangfuseStack/Vpc/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "Vpc8378EB38"
+          }
+        ],
+        "/LangfuseStack/Vpc/PublicSubnet1/Subnet": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VpcPublicSubnet1Subnet5C2D37C4"
+          }
+        ],
+        "/LangfuseStack/Vpc/PublicSubnet1/RouteTable": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VpcPublicSubnet1RouteTable6C95E38E"
+          }
+        ],
+        "/LangfuseStack/Vpc/PublicSubnet1/RouteTableAssociation": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VpcPublicSubnet1RouteTableAssociation97140677"
+          }
+        ],
+        "/LangfuseStack/Vpc/PublicSubnet1/DefaultRoute": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VpcPublicSubnet1DefaultRoute3DA9E72A"
+          }
+        ],
+        "/LangfuseStack/Vpc/PublicSubnet1/EIP": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VpcPublicSubnet1EIPD7E02669"
+          }
+        ],
+        "/LangfuseStack/Vpc/PublicSubnet1/NATGateway": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VpcPublicSubnet1NATGateway4D7517AA"
+          }
+        ],
+        "/LangfuseStack/Vpc/PublicSubnet2/Subnet": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VpcPublicSubnet2Subnet691E08A3"
+          }
+        ],
+        "/LangfuseStack/Vpc/PublicSubnet2/RouteTable": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VpcPublicSubnet2RouteTable94F7E489"
+          }
+        ],
+        "/LangfuseStack/Vpc/PublicSubnet2/RouteTableAssociation": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VpcPublicSubnet2RouteTableAssociationDD5762D8"
+          }
+        ],
+        "/LangfuseStack/Vpc/PublicSubnet2/DefaultRoute": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VpcPublicSubnet2DefaultRoute97F91067"
+          }
+        ],
+        "/LangfuseStack/Vpc/PrivateSubnet1/Subnet": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VpcPrivateSubnet1Subnet536B997A"
+          }
+        ],
+        "/LangfuseStack/Vpc/PrivateSubnet1/RouteTable": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VpcPrivateSubnet1RouteTableB2C5B500"
+          }
+        ],
+        "/LangfuseStack/Vpc/PrivateSubnet1/RouteTableAssociation": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VpcPrivateSubnet1RouteTableAssociation70C59FA6"
+          }
+        ],
+        "/LangfuseStack/Vpc/PrivateSubnet1/DefaultRoute": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VpcPrivateSubnet1DefaultRouteBE02A9ED"
+          }
+        ],
+        "/LangfuseStack/Vpc/PrivateSubnet2/Subnet": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VpcPrivateSubnet2Subnet3788AAA1"
+          }
+        ],
+        "/LangfuseStack/Vpc/PrivateSubnet2/RouteTable": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VpcPrivateSubnet2RouteTableA678073B"
+          }
+        ],
+        "/LangfuseStack/Vpc/PrivateSubnet2/RouteTableAssociation": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VpcPrivateSubnet2RouteTableAssociationA89CAD56"
+          }
+        ],
+        "/LangfuseStack/Vpc/PrivateSubnet2/DefaultRoute": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VpcPrivateSubnet2DefaultRoute060D2087"
+          }
+        ],
+        "/LangfuseStack/Vpc/IGW": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VpcIGWD7BA715C"
+          }
+        ],
+        "/LangfuseStack/Vpc/VPCGW": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VpcVPCGWBF912B6E"
+          }
+        ],
+        "/LangfuseStack/Cluster/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ClusterEB0386A7"
+          }
+        ],
+        "/LangfuseStack/RdsSg/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "RdsSg7F9F43B6"
+          }
+        ],
+        "/LangfuseStack/RdsSg/from LangfuseStackLangfuseWebServiceSecurityGroup531F2099:5432": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "RdsSgfromLangfuseStackLangfuseWebServiceSecurityGroup531F20995432B6388BD7"
+          }
+        ],
+        "/LangfuseStack/RdsSg/from LangfuseStackLangfuseWorkerServiceSecurityGroupE54E20B1:5432": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "RdsSgfromLangfuseStackLangfuseWorkerServiceSecurityGroupE54E20B154321C16EDC7"
+          }
+        ],
+        "/LangfuseStack/RedisSg/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "RedisSgFB48DCCD"
+          }
+        ],
+        "/LangfuseStack/RedisSg/from LangfuseStackLangfuseWebServiceSecurityGroup531F2099:6379": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "RedisSgfromLangfuseStackLangfuseWebServiceSecurityGroup531F2099637914EE34B2"
+          }
+        ],
+        "/LangfuseStack/RedisSg/from LangfuseStackLangfuseWorkerServiceSecurityGroupE54E20B1:6379": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "RedisSgfromLangfuseStackLangfuseWorkerServiceSecurityGroupE54E20B1637900016E26"
+          }
+        ],
+        "/LangfuseStack/LangfuseDbPassword/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "LangfuseDbPasswordE583C421"
+          }
+        ],
+        "/LangfuseStack/Postgres/SubnetGroup/Default": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "PostgresSubnetGroup9F8A4D6E"
+          }
+        ],
+        "/LangfuseStack/Postgres/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "Postgres9DC8BB04"
+          }
+        ],
+        "/LangfuseStack/LangfuseDbUrl/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "LangfuseDbUrl2F17B282"
+          }
+        ],
+        "/LangfuseStack/NextAuthSecret/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "NextAuthSecret21484E9E"
+          }
+        ],
+        "/LangfuseStack/SaltSecret/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "SaltSecret65BD3E83"
+          }
+        ],
+        "/LangfuseStack/EncryptionKeySecret/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "EncryptionKeySecretE7F1DBEA"
+          }
+        ],
+        "/LangfuseStack/ClickhouseUrl/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ClickhouseUrl81E92F77"
+          }
+        ],
+        "/LangfuseStack/ClickhouseUser/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ClickhouseUser5AD061E5"
+          }
+        ],
+        "/LangfuseStack/ClickhousePassword/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ClickhousePasswordA921B314"
+          }
+        ],
+        "/LangfuseStack/ClickhouseMigrationUrl/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ClickhouseMigrationUrl438AF702"
+          }
+        ],
+        "/LangfuseStack/RedisSubnetGroup": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "RedisSubnetGroup"
+          }
+        ],
+        "/LangfuseStack/Redis": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "Redis"
+          }
+        ],
+        "/LangfuseStack/EventsBucket/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "EventsBucketCD4657F9"
+          }
+        ],
+        "/LangfuseStack/EventsBucket/Policy/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "EventsBucketPolicyF680317A"
+          }
+        ],
+        "/LangfuseStack/EventsBucket/AutoDeleteObjectsCustomResource/Default": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "EventsBucketAutoDeleteObjectsCustomResourceD01DE3DC"
+          }
+        ],
+        "/LangfuseStack/Custom::S3AutoDeleteObjectsCustomResourceProvider/Role": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092"
+          }
+        ],
+        "/LangfuseStack/Custom::S3AutoDeleteObjectsCustomResourceProvider/Handler": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F"
+          }
+        ],
+        "/LangfuseStack/LangfuseWeb/LB/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "LangfuseWebLBD78E727A"
+          }
+        ],
+        "/LangfuseStack/LangfuseWeb/LB/SecurityGroup/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "LangfuseWebLBSecurityGroupFC37FA51"
+          }
+        ],
+        "/LangfuseStack/LangfuseWeb/LB/SecurityGroup/to LangfuseStackLangfuseWebServiceSecurityGroup531F2099:3000": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "LangfuseWebLBSecurityGrouptoLangfuseStackLangfuseWebServiceSecurityGroup531F20993000A160303D"
+          }
+        ],
+        "/LangfuseStack/LangfuseWeb/LB/PublicListener/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "LangfuseWebLBPublicListenerA7D294E6"
+          }
+        ],
+        "/LangfuseStack/LangfuseWeb/LB/PublicListener/ECSGroup/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "LangfuseWebLBPublicListenerECSGroup684FEF1C"
+          }
+        ],
+        "/LangfuseStack/LangfuseWeb/LoadBalancerDNS": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "LangfuseWebLoadBalancerDNS7131C531"
+          }
+        ],
+        "/LangfuseStack/LangfuseWeb/ServiceURL": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "LangfuseWebServiceURL43B10076"
+          }
+        ],
+        "/LangfuseStack/LangfuseWeb/TaskDef/TaskRole/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "LangfuseWebTaskDefTaskRoleBB1DA307"
+          }
+        ],
+        "/LangfuseStack/LangfuseWeb/TaskDef/TaskRole/DefaultPolicy/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "LangfuseWebTaskDefTaskRoleDefaultPolicy83456944"
+          }
+        ],
+        "/LangfuseStack/LangfuseWeb/TaskDef/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "LangfuseWebTaskDef9080D5E6"
+          }
+        ],
+        "/LangfuseStack/LangfuseWeb/TaskDef/web/LogGroup/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "LangfuseWebTaskDefwebLogGroup4F368539"
+          }
+        ],
+        "/LangfuseStack/LangfuseWeb/TaskDef/ExecutionRole/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "LangfuseWebTaskDefExecutionRole96CBAD97"
+          }
+        ],
+        "/LangfuseStack/LangfuseWeb/TaskDef/ExecutionRole/DefaultPolicy/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "LangfuseWebTaskDefExecutionRoleDefaultPolicyADFBF504"
+          }
+        ],
+        "/LangfuseStack/LangfuseWeb/Service/Service": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "LangfuseWebService527CDB73"
+          }
+        ],
+        "/LangfuseStack/LangfuseWeb/Service/SecurityGroup/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "LangfuseWebServiceSecurityGroup139241EF"
+          }
+        ],
+        "/LangfuseStack/LangfuseWeb/Service/SecurityGroup/from LangfuseStackLangfuseWebLBSecurityGroup7FA216F2:3000": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "LangfuseWebServiceSecurityGroupfromLangfuseStackLangfuseWebLBSecurityGroup7FA216F230006C3BB42E"
+          }
+        ],
+        "/LangfuseStack/WorkerTaskDef/TaskRole/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "WorkerTaskDefTaskRole7915D243"
+          }
+        ],
+        "/LangfuseStack/WorkerTaskDef/TaskRole/DefaultPolicy/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "WorkerTaskDefTaskRoleDefaultPolicy04B116E6"
+          }
+        ],
+        "/LangfuseStack/WorkerTaskDef/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "WorkerTaskDef3CFCC8D9"
+          }
+        ],
+        "/LangfuseStack/WorkerTaskDef/Worker/LogGroup/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "WorkerTaskDefWorkerLogGroupF97379B0"
+          }
+        ],
+        "/LangfuseStack/WorkerTaskDef/ExecutionRole/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "WorkerTaskDefExecutionRoleA889F066"
+          }
+        ],
+        "/LangfuseStack/WorkerTaskDef/ExecutionRole/DefaultPolicy/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "WorkerTaskDefExecutionRoleDefaultPolicy7E2F924A"
+          }
+        ],
+        "/LangfuseStack/LangfuseWorkerService/Service": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "LangfuseWorkerServiceEF69D312"
+          }
+        ],
+        "/LangfuseStack/LangfuseWorkerService/SecurityGroup/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "LangfuseWorkerServiceSecurityGroupE7845D6D"
+          }
+        ],
+        "/LangfuseStack/AlbUrl": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "AlbUrl"
+          }
+        ],
+        "/LangfuseStack/EventsBucketName": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "EventsBucketName"
+          }
+        ],
+        "/LangfuseStack/ClickhouseUrlSecretName": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ClickhouseUrlSecretName"
+          }
+        ],
+        "/LangfuseStack/ClickhouseUserSecretName": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ClickhouseUserSecretName"
+          }
+        ],
+        "/LangfuseStack/ClickhousePasswordSecretName": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ClickhousePasswordSecretName"
+          }
+        ],
+        "/LangfuseStack/ClickhouseMigrationUrlSecretName": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ClickhouseMigrationUrlSecretName"
+          }
+        ],
+        "/LangfuseStack/CDKMetadata/Default": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CDKMetadata"
+          }
+        ],
+        "/LangfuseStack/BootstrapVersion": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "BootstrapVersion"
+          }
+        ],
+        "/LangfuseStack/CheckBootstrapVersion": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CheckBootstrapVersion"
+          }
+        ]
+      },
+      "displayName": "LangfuseStack"
+    },
+    "Tree": {
+      "type": "cdk:tree",
+      "properties": {
+        "file": "tree.json"
+      }
+    }
+  }
+}

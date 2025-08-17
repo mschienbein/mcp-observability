@@ -4,8 +4,18 @@ import aws_cdk as cdk
 from langfuse_stack import LangfuseStack
 
 app = cdk.App()
-LangfuseStack(app, "LangfuseStack",
-              env=cdk.Environment(
-                  account=os.getenv("CDK_DEFAULT_ACCOUNT"),
-                  region=os.getenv("CDK_DEFAULT_REGION")))
+
+# Ensure we use the same bootstrap qualifier as the environment
+synth = cdk.DefaultStackSynthesizer(qualifier="mcpobs")
+
+LangfuseStack(
+    app,
+    "LangfuseStack",
+    synthesizer=synth,
+    env=cdk.Environment(
+        account=os.getenv("CDK_DEFAULT_ACCOUNT"),
+        region=os.getenv("CDK_DEFAULT_REGION"),
+    ),
+)
+
 app.synth()
