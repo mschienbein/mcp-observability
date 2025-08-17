@@ -225,7 +225,7 @@ class LangfuseStack(Stack):
             health_check_grace_period=Duration.seconds(900),
         )
         web.target_group.configure_health_check(
-            path="/api/health",
+            path="/",
             port="3000",
             healthy_http_codes="200-399",
             interval=Duration.seconds(10),
