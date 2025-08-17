@@ -332,6 +332,11 @@ class LangfuseStack(Stack):
         CfnOutput(self, "ClickhouseMigrationUrlSecretName", value=clickhouse_migration_url_secret.secret_name)
         CfnOutput(self, "ClickhouseDbSecretName", value=clickhouse_db_secret.secret_name)
         CfnOutput(self, "ClickhouseMigrationSslSecretName", value=clickhouse_migration_ssl_secret.secret_name)
+        # Core app secret names for easier rotation
+        CfnOutput(self, "NextAuthSecretName", value=nextauth_secret.secret_name)
+        CfnOutput(self, "SaltSecretName", value=salt_secret.secret_name)
+        CfnOutput(self, "EncryptionKeySecretName", value=encryption_secret.secret_name)
+        CfnOutput(self, "DatabaseUrlSecretName", value=db_url_secret.secret_name)
         # Convenience outputs for ECS redeploys
         CfnOutput(self, "ClusterName", value=cluster.cluster_name)
         CfnOutput(self, "WebServiceName", value=web.service.service_name)
