@@ -1,0 +1,17 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Node
+ui/node_modules/
+ui/.vite/
+ui/dist/
+
+# CDK
+cdk.out/
+cdk.context.json
+
+# Env
+*.env
+.env*

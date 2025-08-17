@@ -1,0 +1,26 @@
+{
+  "mcpServers": {
+    "demo-observability-tools": {
+      "transport": {
+        "type": "http",
+        "url": "http://localhost:3002/mcp"
+      },
+      "env": {
+        "LANGFUSE_PUBLIC_KEY": "YOUR_PUBLIC",
+        "LANGFUSE_SECRET_KEY": "YOUR_SECRET",
+        "LANGFUSE_HOST": "https://obs.example.com"
+      }
+    },
+    "demo-observability-feedback": {
+      "transport": {
+        "type": "http",
+        "url": "http://localhost:3003/mcp"
+      },
+      "env": {
+        "LANGFUSE_PUBLIC_KEY": "YOUR_PUBLIC",
+        "LANGFUSE_SECRET_KEY": "YOUR_SECRET",
+        "LANGFUSE_HOST": "https://obs.example.com"
+      }
+    }
+  }
+}
