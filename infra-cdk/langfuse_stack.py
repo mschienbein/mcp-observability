@@ -10,6 +10,8 @@ from aws_cdk import (
     aws_s3 as s3,
     aws_rds as rds,
     aws_elasticache as elasticache,
+    aws_ecr as ecr,
+    aws_iam as iam,
     aws_secretsmanager as secretsmanager,
     CfnOutput,
 )
@@ -99,54 +101,8 @@ class LangfuseStack(Stack):
             ),
         )
 
-        # --- ClickHouse (Langfuse v3) placeholders in Secrets Manager
-        # Optionally pre-populate via CDK context: -c CLICKHOUSE_URL=... -c CLICKHOUSE_USER=... etc.
-        ch_url_ctx = self.node.try_get_context("CLICKHOUSE_URL")
-        ch_user_ctx = self.node.try_get_context("CLICKHOUSE_USER")
-        ch_pass_ctx = self.node.try_get_context("CLICKHOUSE_PASSWORD")
-        ch_db_ctx = self.node.try_get_context("CLICKHOUSE_DB")
-        ch_migr_url_ctx = self.node.try_get_context("CLICKHOUSE_MIGRATION_URL")
-        ch_migr_ssl_ctx = self.node.try_get_context("CLICKHOUSE_MIGRATION_SSL")
-        clickhouse_url_secret = secretsmanager.Secret(
-            self,
-            "ClickhouseUrl",
-            description="CLICKHOUSE_URL for Langfuse v3 (e.g., https://<host>:8443/?ssl=true)",
-            secret_string_value=SecretValue.unsafe_plain_text(ch_url_ctx or "TO_BE_SET"),
-        )
-        clickhouse_user_secret = secretsmanager.Secret(
-            self,
-            "ClickhouseUser",
-            description="CLICKHOUSE_USER for Langfuse v3",
-            secret_string_value=SecretValue.unsafe_plain_text(ch_user_ctx or "TO_BE_SET"),
-        )
-        clickhouse_password_secret = secretsmanager.Secret(
-            self,
-            "ClickhousePassword",
-            description="CLICKHOUSE_PASSWORD for Langfuse v3",
-            secret_string_value=SecretValue.unsafe_plain_text(ch_pass_ctx or "TO_BE_SET"),
-        )
-        # Optional, used for migrations if different from CLICKHOUSE_URL
-        clickhouse_migration_url_secret = secretsmanager.Secret(
-            self,
-            "ClickhouseMigrationUrl",
-            description="CLICKHOUSE_MIGRATION_URL for Langfuse v3 (optional)",
-            secret_string_value=SecretValue.unsafe_plain_text(ch_migr_url_ctx or "TO_BE_SET"),
-        )
-
-        # Optional DB name (defaults to 'default')
-        clickhouse_db_secret = secretsmanager.Secret(
-            self,
-            "ClickhouseDb",
-            description="CLICKHOUSE_DB for Langfuse v3 (default: 'default')",
-            secret_string_value=SecretValue.unsafe_plain_text(ch_db_ctx or "default"),
-        )
-        # Migration SSL toggle ("true" | "false"), not sensitive but stored for consistency
-        clickhouse_migration_ssl_secret = secretsmanager.Secret(
-            self,
-            "ClickhouseMigrationSsl",
-            description="CLICKHOUSE_MIGRATION_SSL for Langfuse v3 (\"true\" | \"false\")",
-            secret_string_value=SecretValue.unsafe_plain_text(ch_migr_ssl_ctx or "true"),
-        )
+        # ClickHouse secrets are defined later (after optional EC2 provisioning)
+        # so that we can default to the instance private IP without circular deps.
 
         # --- ElastiCache Redis (single node) for Langfuse
         redis_subnets = vpc.select_subnets(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS)
@@ -180,32 +136,246 @@ class LangfuseStack(Stack):
             auto_delete_objects=True,
         )
 
-        # --- Langfuse Web behind ALB
-        web = ecs_patterns.ApplicationLoadBalancedFargateService(
-            self,
-            "LangfuseWeb",
-            cluster=cluster,
-            cpu=512,
-            memory_limit_mib=2048,
-            desired_count=1,
-            public_load_balancer=True,
-            task_image_options=ecs_patterns.ApplicationLoadBalancedTaskImageOptions(
-                image=ecs.ContainerImage.from_registry("langfuse/langfuse:latest"),
-                container_port=3000,
-                enable_logging=True,
+        # Langfuse Web/Worker are defined later, after ClickHouse secrets
+
+        # --- Optional: provision a single-node ClickHouse on EC2 for free self-hosting
+        # Enable by passing: -c PROVISION_CLICKHOUSE_EC2=true
+        provision_ch = self.node.try_get_context("PROVISION_CLICKHOUSE_EC2")
+        if str(provision_ch).lower() in ["1", "true", "yes"]:
+            ch_sg = ec2.SecurityGroup(self, "ClickhouseSg", vpc=vpc, allow_all_outbound=True)
+            # Ingress rules will be added after Web/Worker are defined to avoid circular deps
+
+            # Attach an instance role to enable SSM access for diagnostics
+            ch_instance_role = iam.Role(
+                self,
+                "ClickhouseInstanceRole",
+                assumed_by=iam.ServicePrincipal("ec2.amazonaws.com"),
+                managed_policies=[
+                    iam.ManagedPolicy.from_aws_managed_policy_name("AmazonSSMManagedInstanceCore"),
+                    # allow instance to login/pull/push to ECR for mirrored image
+                    iam.ManagedPolicy.from_aws_managed_policy_name("AmazonEC2ContainerRegistryPowerUser"),
+                ],
+            )
+
+            ch_instance = ec2.Instance(
+                self,
+                "ClickhouseInstance",
+                vpc=vpc,
+                vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS),
+                instance_type=ec2.InstanceType.of(ec2.InstanceClass.BURSTABLE3, ec2.InstanceSize.SMALL),
+                machine_image=ec2.MachineImage.latest_amazon_linux2023(),
+                security_group=ch_sg,
+                role=ch_instance_role,
+                block_devices=[
+                    ec2.BlockDevice(
+                        device_name="/dev/xvda",
+                        volume=ec2.BlockDeviceVolume.ebs(50),  # 50 GB gp3
+                    )
+                ],
+            )
+            # Install ClickHouse via Docker (preferred for consistency) or RPM based on context flag
+            use_docker = str(self.node.try_get_context("PROVISION_CLICKHOUSE_DOCKER")).lower() in ["1", "true", "yes"]
+
+            if use_docker:
+                # Create an ECR repository for mirroring the ClickHouse image, and use a pinned tag via context
+                image_tag = self.node.try_get_context("CLICKHOUSE_IMAGE_TAG") or "24.8"
+                ch_repo = ecr.Repository(self, "ClickhouseEcrRepo")
+                ecr_image_uri = f"{ch_repo.repository_uri}:{image_tag}"
+                # Ensure the ECR repo exists before the instance boots and tries to push/pull
+                ch_instance.node.add_dependency(ch_repo)
+
+                ch_instance.user_data.add_commands(
+                    "set -euxo pipefail",
+                    # Install Docker and AWS CLI
+                    "dnf -y install docker awscli || yum -y install docker awscli",
+                    "systemctl enable --now docker",
+                    "usermod -aG docker ec2-user || true",
+                    # Prepare config, data, and log directories on host
+                    "mkdir -p /etc/clickhouse-server/config.d /etc/clickhouse-server/users.d /var/lib/clickhouse /var/log/clickhouse-server",
+                    # Open listen to VPC
+                    "cat >/etc/clickhouse-server/config.d/listen.xml <<'EOF'",
+                    "<clickhouse>",
+                    "  <listen_host>0.0.0.0</listen_host>",
+                    "  <listen_host>::</listen_host>",
+                    "</clickhouse>",
+                    "EOF",
+                    # Explicit ports
+                    "cat >/etc/clickhouse-server/config.d/ports.xml <<'EOF'",
+                    "<clickhouse>",
+                    "  <http_port>8123</http_port>",
+                    "  <tcp_port>9000</tcp_port>",
+                    "</clickhouse>",
+                    "EOF",
+                    # Default user with password and wide network for VPC access
+                    "cat >/etc/clickhouse-server/users.d/default-user.xml <<'EOF'",
+                    "<clickhouse>",
+                    "  <users>",
+                    "    <default>",
+                    "      <password>langfuse</password>",
+                    "      <profile>default</profile>",
+                    "      <networks>",
+                    "        <ip>::/0</ip>",
+                    "      </networks>",
+                    "    </default>",
+                    "  </users>",
+                    "</clickhouse>",
+                    "EOF",
+                    # ECR login and mirror if needed, then run container from ECR with pinned tag
+                    f"ECR_IMAGE='{ecr_image_uri}'",
+                    f"REGION='{cdk.Aws.REGION}'",
+                    "REGISTRY=$(echo ${ECR_IMAGE} | cut -d'/' -f1)",
+                    "aws ecr get-login-password --region ${REGION} | docker login --username AWS --password-stdin ${REGISTRY} || true",
+                    # Pull from ECR first; if not present yet, pull from Docker Hub, push to ECR, and proceed
+                    f"if ! docker pull '{ecr_image_uri}'; then docker pull 'clickhouse/clickhouse-server:{image_tag}'; docker tag 'clickhouse/clickhouse-server:{image_tag}' '{ecr_image_uri}'; docker push '{ecr_image_uri}' || true; fi",
+                    "docker rm -f clickhouse || true",
+                    # Ensure clickhouse user (typically 101:101) can write to mounted dirs
+                    "chown -R 101:101 /var/lib/clickhouse /var/log/clickhouse-server || true",
+                    f"docker run -d --name clickhouse --restart unless-stopped -p 8123:8123 -p 9000:9000 -v /var/lib/clickhouse:/var/lib/clickhouse -v /etc/clickhouse-server/config.d:/etc/clickhouse-server/config.d -v /etc/clickhouse-server/users.d:/etc/clickhouse-server/users.d -v /var/log/clickhouse-server:/var/log/clickhouse-server '{ecr_image_uri}'",
+                    # Health check
+                    "for i in {1..24}; do if curl -fsS http://127.0.0.1:8123/ping >/dev/null; then echo 'ClickHouse up (docker/ECR)'; break; else echo 'Waiting for ClickHouse (docker/ECR)...'; sleep 5; fi; done",
+                )
+
+            # --- ClickHouse Secrets (default to instance private IP if EC2 is provisioned)
+            ch_url_ctx = self.node.try_get_context("CLICKHOUSE_URL")
+            ch_user_ctx = self.node.try_get_context("CLICKHOUSE_USER")
+            ch_pass_ctx = self.node.try_get_context("CLICKHOUSE_PASSWORD")
+            ch_db_ctx = self.node.try_get_context("CLICKHOUSE_DB")
+            ch_migr_url_ctx = self.node.try_get_context("CLICKHOUSE_MIGRATION_URL")
+            ch_migr_ssl_ctx = self.node.try_get_context("CLICKHOUSE_MIGRATION_SSL")
+
+            ch_ip = ch_instance.instance_private_ip
+            ch_url_default = cdk.Fn.join("", ["http://", ch_ip, ":8123"])
+            ch_migration_url_default = cdk.Fn.join("", ["clickhouse://", ch_ip, ":9000"])
+
+            clickhouse_url_secret = secretsmanager.Secret(
+                self,
+                "ClickhouseUrl",
+                description="CLICKHOUSE_URL for Langfuse v3 (e.g., https://<host>:8443; do not append ?ssl=...)",
+                secret_string_value=SecretValue.unsafe_plain_text(ch_url_ctx or ch_url_default),
+            )
+            clickhouse_user_secret = secretsmanager.Secret(
+                self,
+                "ClickhouseUser",
+                description="CLICKHOUSE_USER for Langfuse v3",
+                secret_string_value=SecretValue.unsafe_plain_text(ch_user_ctx or "default"),
+            )
+            clickhouse_password_secret = secretsmanager.Secret(
+                self,
+                "ClickhousePassword",
+                description="CLICKHOUSE_PASSWORD for Langfuse v3",
+                secret_string_value=SecretValue.unsafe_plain_text(ch_pass_ctx or "langfuse"),
+            )
+            clickhouse_migration_url_secret = secretsmanager.Secret(
+                self,
+                "ClickhouseMigrationUrl",
+                description="CLICKHOUSE_MIGRATION_URL for Langfuse v3 (optional)",
+                secret_string_value=SecretValue.unsafe_plain_text(ch_migr_url_ctx or ch_migration_url_default),
+            )
+            clickhouse_db_secret = secretsmanager.Secret(
+                self,
+                "ClickhouseDb",
+                description="CLICKHOUSE_DB for Langfuse v3 (default: 'default')",
+                secret_string_value=SecretValue.unsafe_plain_text(ch_db_ctx or "default"),
+            )
+            clickhouse_migration_ssl_secret = secretsmanager.Secret(
+                self,
+                "ClickhouseMigrationSsl",
+                description="CLICKHOUSE_MIGRATION_SSL for Langfuse v3 (\"true\" | \"false\")",
+                secret_string_value=SecretValue.unsafe_plain_text(ch_migr_ssl_ctx or "false"),
+            )
+
+            # --- Langfuse Web behind ALB (after secrets)
+            web = ecs_patterns.ApplicationLoadBalancedFargateService(
+                self,
+                "LangfuseWeb",
+                cluster=cluster,
+                cpu=512,
+                memory_limit_mib=2048,
+                desired_count=1,
+                public_load_balancer=True,
+                task_image_options=ecs_patterns.ApplicationLoadBalancedTaskImageOptions(
+                    image=ecs.ContainerImage.from_registry("langfuse/langfuse:latest"),
+                    container_port=3000,
+                    enable_logging=True,
+                    environment={
+                        "REDIS_CONNECTION_STRING": f"redis://{redis.attr_redis_endpoint_address}:{redis.attr_redis_endpoint_port}",
+                        "LANGFUSE_TRACING_ENVIRONMENT": "prod",
+                        "NODE_OPTIONS": "--max-old-space-size=3072",
+                        "LANGFUSE_AUTO_CLICKHOUSE_MIGRATION_DISABLED": "true",
+                        "LANGFUSE_S3_EVENT_UPLOAD_BUCKET": events_bucket.bucket_name,
+                        "LANGFUSE_S3_EVENT_UPLOAD_REGION": cdk.Aws.REGION,
+                        "LANGFUSE_S3_EVENT_UPLOAD_PREFIX": "events/",
+                        "CLICKHOUSE_CLUSTER_ENABLED": "false",
+                    },
+                    secrets={
+                        "DATABASE_URL": ecs.Secret.from_secrets_manager(db_url_secret),
+                        "NEXTAUTH_SECRET": ecs.Secret.from_secrets_manager(nextauth_secret),
+                        "SALT": ecs.Secret.from_secrets_manager(salt_secret),
+                        "ENCRYPTION_KEY": ecs.Secret.from_secrets_manager(encryption_secret),
+                        "CLICKHOUSE_URL": ecs.Secret.from_secrets_manager(clickhouse_url_secret),
+                        "CLICKHOUSE_USER": ecs.Secret.from_secrets_manager(clickhouse_user_secret),
+                        "CLICKHOUSE_PASSWORD": ecs.Secret.from_secrets_manager(clickhouse_password_secret),
+                        "CLICKHOUSE_MIGRATION_URL": ecs.Secret.from_secrets_manager(clickhouse_migration_url_secret),
+                        "CLICKHOUSE_DB": ecs.Secret.from_secrets_manager(clickhouse_db_secret),
+                        "CLICKHOUSE_MIGRATION_SSL": ecs.Secret.from_secrets_manager(clickhouse_migration_ssl_secret),
+                    },
+                ),
+                health_check_grace_period=Duration.seconds(900),
+            )
+            web.target_group.configure_health_check(
+                path="/",
+                port="3000",
+                healthy_http_codes="200-399",
+                interval=Duration.seconds(10),
+                healthy_threshold_count=2,
+                unhealthy_threshold_count=3,
+            )
+            web.target_group.set_attribute("deregistration_delay.timeout_seconds", "30")
+            if web.task_definition.default_container:
+                web.task_definition.default_container.add_environment(
+                    "NEXTAUTH_URL",
+                    f"http://{web.load_balancer.load_balancer_dns_name}",
+                )
+            cfn_web_service = web.service.node.default_child
+            if isinstance(cfn_web_service, ecs.CfnService):
+                cfn_web_service.deployment_configuration = ecs.CfnService.DeploymentConfigurationProperty(
+                    minimum_healthy_percent=0,
+                    maximum_percent=200,
+                )
+            if web.task_definition.execution_role:
+                for _s in [
+                    db_url_secret,
+                    nextauth_secret,
+                    salt_secret,
+                    encryption_secret,
+                    clickhouse_url_secret,
+                    clickhouse_user_secret,
+                    clickhouse_password_secret,
+                    clickhouse_migration_url_secret,
+                    clickhouse_db_secret,
+                    clickhouse_migration_ssl_secret,
+                ]:
+                    _s.grant_read(web.task_definition.execution_role)
+            events_bucket.grant_read_write(web.task_definition.task_role)
+
+            web_sg = web.service.connections.security_groups[0]
+            rds_sg.add_ingress_rule(peer=web_sg, connection=ec2.Port.tcp(5432), description="Allow web to Postgres")
+            redis_sg.add_ingress_rule(peer=web_sg, connection=ec2.Port.tcp(6379), description="Allow web to Redis")
+
+            # --- Worker (after secrets)
+            task_def = ecs.FargateTaskDefinition(self, "WorkerTaskDef", cpu=512, memory_limit_mib=2048)
+            task_def.add_container(
+                "Worker",
+                image=ecs.ContainerImage.from_registry("langfuse/langfuse-worker:latest"),
+                logging=ecs.LogDrivers.aws_logs(stream_prefix="LangfuseWorker"),
                 environment={
-                    # Construct connection strings from provisioned resources
                     "REDIS_CONNECTION_STRING": f"redis://{redis.attr_redis_endpoint_address}:{redis.attr_redis_endpoint_port}",
-                    # App config
                     "LANGFUSE_TRACING_ENVIRONMENT": "prod",
                     "NODE_OPTIONS": "--max-old-space-size=3072",
-                    # Allow startup without ClickHouse secrets populated
                     "LANGFUSE_AUTO_CLICKHOUSE_MIGRATION_DISABLED": "true",
-                    # Langfuse v3 S3 event uploads
                     "LANGFUSE_S3_EVENT_UPLOAD_BUCKET": events_bucket.bucket_name,
                     "LANGFUSE_S3_EVENT_UPLOAD_REGION": cdk.Aws.REGION,
                     "LANGFUSE_S3_EVENT_UPLOAD_PREFIX": "events/",
-                    # Disable clustering unless you operate a ClickHouse cluster
                     "CLICKHOUSE_CLUSTER_ENABLED": "false",
                 },
                 secrets={
@@ -213,7 +383,6 @@ class LangfuseStack(Stack):
                     "NEXTAUTH_SECRET": ecs.Secret.from_secrets_manager(nextauth_secret),
                     "SALT": ecs.Secret.from_secrets_manager(salt_secret),
                     "ENCRYPTION_KEY": ecs.Secret.from_secrets_manager(encryption_secret),
-                    # ClickHouse (Langfuse v3)
                     "CLICKHOUSE_URL": ecs.Secret.from_secrets_manager(clickhouse_url_secret),
                     "CLICKHOUSE_USER": ecs.Secret.from_secrets_manager(clickhouse_user_secret),
                     "CLICKHOUSE_PASSWORD": ecs.Secret.from_secrets_manager(clickhouse_password_secret),
@@ -221,126 +390,238 @@ class LangfuseStack(Stack):
                     "CLICKHOUSE_DB": ecs.Secret.from_secrets_manager(clickhouse_db_secret),
                     "CLICKHOUSE_MIGRATION_SSL": ecs.Secret.from_secrets_manager(clickhouse_migration_ssl_secret),
                 },
-            ),
-            health_check_grace_period=Duration.seconds(900),
-        )
-        web.target_group.configure_health_check(
-            path="/",
-            port="3000",
-            healthy_http_codes="200-399",
-            interval=Duration.seconds(10),
-            healthy_threshold_count=2,
-            unhealthy_threshold_count=3,
-        )
-        # Speed up deployments by shortening drain time
-        web.target_group.set_attribute("deregistration_delay.timeout_seconds", "30")
-        # Set NEXTAUTH_URL now that the load balancer is created
-        if web.task_definition.default_container:
-            web.task_definition.default_container.add_environment(
-                "NEXTAUTH_URL",
-                f"http://{web.load_balancer.load_balancer_dns_name}",
             )
-        # Relax deployment requirements so stack creation doesn't wait on healthy tasks
-        cfn_web_service = web.service.node.default_child
-        if isinstance(cfn_web_service, ecs.CfnService):
-            cfn_web_service.deployment_configuration = ecs.CfnService.DeploymentConfigurationProperty(
-                minimum_healthy_percent=0,
-                maximum_percent=200,
+            worker = ecs.FargateService(
+                self,
+                "LangfuseWorkerService",
+                cluster=cluster,
+                task_definition=task_def,
+                desired_count=0,
+                assign_public_ip=False,
+                vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS),
             )
-        # Explicitly grant secret read permissions to the execution role used by ECS to fetch secrets
-        if web.task_definition.execution_role:
-            for _s in [
-                db_url_secret,
-                nextauth_secret,
-                salt_secret,
-                encryption_secret,
-                clickhouse_url_secret,
-                clickhouse_user_secret,
-                clickhouse_password_secret,
-                clickhouse_migration_url_secret,
-                clickhouse_db_secret,
-                clickhouse_migration_ssl_secret,
-            ]:
-                _s.grant_read(web.task_definition.execution_role)
-        # Allow the web task to read/write to the events bucket (v3 event uploads)
-        events_bucket.grant_read_write(web.task_definition.task_role)
+            cfn_worker_service = worker.node.default_child
+            if isinstance(cfn_worker_service, ecs.CfnService):
+                cfn_worker_service.deployment_configuration = ecs.CfnService.DeploymentConfigurationProperty(
+                    minimum_healthy_percent=0,
+                    maximum_percent=200,
+                )
+            if task_def.execution_role:
+                for _s in [
+                    db_url_secret,
+                    nextauth_secret,
+                    salt_secret,
+                    encryption_secret,
+                    clickhouse_url_secret,
+                    clickhouse_user_secret,
+                    clickhouse_password_secret,
+                    clickhouse_migration_url_secret,
+                    clickhouse_db_secret,
+                    clickhouse_migration_ssl_secret,
+                ]:
+                    _s.grant_read(task_def.execution_role)
+            events_bucket.grant_read_write(task_def.task_role)
 
-        # Allow ECS tasks to reach RDS/Redis
-        web_sg = web.service.connections.security_groups[0]
-        rds_sg.add_ingress_rule(peer=web_sg, connection=ec2.Port.tcp(5432), description="Allow web to Postgres")
-        redis_sg.add_ingress_rule(peer=web_sg, connection=ec2.Port.tcp(6379), description="Allow web to Redis")
+            worker_sg = worker.connections.security_groups[0]
+            rds_sg.add_ingress_rule(peer=worker_sg, connection=ec2.Port.tcp(5432), description="Allow worker to Postgres")
+            redis_sg.add_ingress_rule(peer=worker_sg, connection=ec2.Port.tcp(6379), description="Allow worker to Redis")
 
-        # --- Worker (no ALB)
-        task_def = ecs.FargateTaskDefinition(self, "WorkerTaskDef", cpu=512, memory_limit_mib=2048)
-        task_def.add_container(
-            "Worker",
-            image=ecs.ContainerImage.from_registry("langfuse/langfuse-worker:latest"),
-            logging=ecs.LogDrivers.aws_logs(stream_prefix="LangfuseWorker"),
-            environment={
-                "REDIS_CONNECTION_STRING": f"redis://{redis.attr_redis_endpoint_address}:{redis.attr_redis_endpoint_port}",
-                "LANGFUSE_TRACING_ENVIRONMENT": "prod",
-                "NODE_OPTIONS": "--max-old-space-size=3072",
-                # Allow startup without ClickHouse secrets populated
-                "LANGFUSE_AUTO_CLICKHOUSE_MIGRATION_DISABLED": "true",
-                # Langfuse v3 S3 event uploads
-                "LANGFUSE_S3_EVENT_UPLOAD_BUCKET": events_bucket.bucket_name,
-                "LANGFUSE_S3_EVENT_UPLOAD_REGION": cdk.Aws.REGION,
-                "LANGFUSE_S3_EVENT_UPLOAD_PREFIX": "events/",
-                # Disable clustering unless you operate a ClickHouse cluster
-                "CLICKHOUSE_CLUSTER_ENABLED": "false",
-            },
-            secrets={
-                "DATABASE_URL": ecs.Secret.from_secrets_manager(db_url_secret),
-                "NEXTAUTH_SECRET": ecs.Secret.from_secrets_manager(nextauth_secret),
-                "SALT": ecs.Secret.from_secrets_manager(salt_secret),
-                "ENCRYPTION_KEY": ecs.Secret.from_secrets_manager(encryption_secret),
-                # ClickHouse (Langfuse v3)
-                "CLICKHOUSE_URL": ecs.Secret.from_secrets_manager(clickhouse_url_secret),
-                "CLICKHOUSE_USER": ecs.Secret.from_secrets_manager(clickhouse_user_secret),
-                "CLICKHOUSE_PASSWORD": ecs.Secret.from_secrets_manager(clickhouse_password_secret),
-                "CLICKHOUSE_MIGRATION_URL": ecs.Secret.from_secrets_manager(clickhouse_migration_url_secret),
-                "CLICKHOUSE_DB": ecs.Secret.from_secrets_manager(clickhouse_db_secret),
-                "CLICKHOUSE_MIGRATION_SSL": ecs.Secret.from_secrets_manager(clickhouse_migration_ssl_secret),
-            },
-        )
-        worker = ecs.FargateService(
-            self,
-            "LangfuseWorkerService",
-            cluster=cluster,
-            task_definition=task_def,
-            desired_count=0,
-            assign_public_ip=False,
-            vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS),
-        )
-        # Relax deployment requirements for worker as well
-        cfn_worker_service = worker.node.default_child
-        if isinstance(cfn_worker_service, ecs.CfnService):
-            cfn_worker_service.deployment_configuration = ecs.CfnService.DeploymentConfigurationProperty(
-                minimum_healthy_percent=0,
-                maximum_percent=200,
+            # Now that web/worker SGs exist, permit them to reach ClickHouse
+            ch_sg.add_ingress_rule(peer=web_sg, connection=ec2.Port.tcp(8123), description="Web to CH HTTP")
+            ch_sg.add_ingress_rule(peer=web_sg, connection=ec2.Port.tcp(9000), description="Web to CH Native")
+            ch_sg.add_ingress_rule(peer=worker_sg, connection=ec2.Port.tcp(8123), description="Worker to CH HTTP")
+            ch_sg.add_ingress_rule(peer=worker_sg, connection=ec2.Port.tcp(9000), description="Worker to CH Native")
+
+            CfnOutput(self, "ClickhouseEc2PrivateIp", value=ch_instance.instance_private_ip)
+            CfnOutput(self, "ClickhouseEc2SecurityGroupId", value=ch_sg.security_group_id)
+
+        else:
+            # --- ClickHouse Secrets (placeholders when EC2 is not provisioned)
+            ch_url_ctx = self.node.try_get_context("CLICKHOUSE_URL")
+            ch_user_ctx = self.node.try_get_context("CLICKHOUSE_USER")
+            ch_pass_ctx = self.node.try_get_context("CLICKHOUSE_PASSWORD")
+            ch_db_ctx = self.node.try_get_context("CLICKHOUSE_DB")
+            ch_migr_url_ctx = self.node.try_get_context("CLICKHOUSE_MIGRATION_URL")
+            ch_migr_ssl_ctx = self.node.try_get_context("CLICKHOUSE_MIGRATION_SSL")
+
+            clickhouse_url_secret = secretsmanager.Secret(
+                self,
+                "ClickhouseUrl",
+                description="CLICKHOUSE_URL for Langfuse v3 (e.g., https://<host>:8443; do not append ?ssl=...)",
+                secret_string_value=SecretValue.unsafe_plain_text(ch_url_ctx or "http://127.0.0.1:8123"),
             )
-        # Grant secret read permissions to the worker execution role
-        if task_def.execution_role:
-            for _s in [
-                db_url_secret,
-                nextauth_secret,
-                salt_secret,
-                encryption_secret,
-                clickhouse_url_secret,
-                clickhouse_user_secret,
-                clickhouse_password_secret,
-                clickhouse_migration_url_secret,
-                clickhouse_db_secret,
-                clickhouse_migration_ssl_secret,
-            ]:
-                _s.grant_read(task_def.execution_role)
-        # Allow the worker task to read/write to the events bucket (v3 event uploads)
-        events_bucket.grant_read_write(task_def.task_role)
+            clickhouse_user_secret = secretsmanager.Secret(
+                self,
+                "ClickhouseUser",
+                description="CLICKHOUSE_USER for Langfuse v3",
+                secret_string_value=SecretValue.unsafe_plain_text(ch_user_ctx or "default"),
+            )
+            clickhouse_password_secret = secretsmanager.Secret(
+                self,
+                "ClickhousePassword",
+                description="CLICKHOUSE_PASSWORD for Langfuse v3",
+                secret_string_value=SecretValue.unsafe_plain_text(ch_pass_ctx or "langfuse"),
+            )
+            clickhouse_migration_url_secret = secretsmanager.Secret(
+                self,
+                "ClickhouseMigrationUrl",
+                description="CLICKHOUSE_MIGRATION_URL for Langfuse v3 (optional)",
+                secret_string_value=SecretValue.unsafe_plain_text(ch_migr_url_ctx or "clickhouse://127.0.0.1:9000"),
+            )
+            clickhouse_db_secret = secretsmanager.Secret(
+                self,
+                "ClickhouseDb",
+                description="CLICKHOUSE_DB for Langfuse v3 (default: 'default')",
+                secret_string_value=SecretValue.unsafe_plain_text(ch_db_ctx or "default"),
+            )
+            clickhouse_migration_ssl_secret = secretsmanager.Secret(
+                self,
+                "ClickhouseMigrationSsl",
+                description="CLICKHOUSE_MIGRATION_SSL for Langfuse v3 (\"true\" | \"false\")",
+                secret_string_value=SecretValue.unsafe_plain_text(ch_migr_ssl_ctx or "false"),
+            )
 
-        # Allow worker to reach RDS/Redis
-        worker_sg = worker.connections.security_groups[0]
-        rds_sg.add_ingress_rule(peer=worker_sg, connection=ec2.Port.tcp(5432), description="Allow worker to Postgres")
-        redis_sg.add_ingress_rule(peer=worker_sg, connection=ec2.Port.tcp(6379), description="Allow worker to Redis")
+            # --- Langfuse Web behind ALB (after secrets)
+            web = ecs_patterns.ApplicationLoadBalancedFargateService(
+                self,
+                "LangfuseWeb",
+                cluster=cluster,
+                cpu=512,
+                memory_limit_mib=2048,
+                desired_count=1,
+                public_load_balancer=True,
+                task_image_options=ecs_patterns.ApplicationLoadBalancedTaskImageOptions(
+                    image=ecs.ContainerImage.from_registry("langfuse/langfuse:latest"),
+                    container_port=3000,
+                    enable_logging=True,
+                    environment={
+                        "REDIS_CONNECTION_STRING": f"redis://{redis.attr_redis_endpoint_address}:{redis.attr_redis_endpoint_port}",
+                        "LANGFUSE_TRACING_ENVIRONMENT": "prod",
+                        "NODE_OPTIONS": "--max-old-space-size=3072",
+                        "LANGFUSE_AUTO_CLICKHOUSE_MIGRATION_DISABLED": "true",
+                        "LANGFUSE_S3_EVENT_UPLOAD_BUCKET": events_bucket.bucket_name,
+                        "LANGFUSE_S3_EVENT_UPLOAD_REGION": cdk.Aws.REGION,
+                        "LANGFUSE_S3_EVENT_UPLOAD_PREFIX": "events/",
+                        "CLICKHOUSE_CLUSTER_ENABLED": "false",
+                    },
+                    secrets={
+                        "DATABASE_URL": ecs.Secret.from_secrets_manager(db_url_secret),
+                        "NEXTAUTH_SECRET": ecs.Secret.from_secrets_manager(nextauth_secret),
+                        "SALT": ecs.Secret.from_secrets_manager(salt_secret),
+                        "ENCRYPTION_KEY": ecs.Secret.from_secrets_manager(encryption_secret),
+                        "CLICKHOUSE_URL": ecs.Secret.from_secrets_manager(clickhouse_url_secret),
+                        "CLICKHOUSE_USER": ecs.Secret.from_secrets_manager(clickhouse_user_secret),
+                        "CLICKHOUSE_PASSWORD": ecs.Secret.from_secrets_manager(clickhouse_password_secret),
+                        "CLICKHOUSE_MIGRATION_URL": ecs.Secret.from_secrets_manager(clickhouse_migration_url_secret),
+                        "CLICKHOUSE_DB": ecs.Secret.from_secrets_manager(clickhouse_db_secret),
+                        "CLICKHOUSE_MIGRATION_SSL": ecs.Secret.from_secrets_manager(clickhouse_migration_ssl_secret),
+                    },
+                ),
+                health_check_grace_period=Duration.seconds(900),
+            )
+            web.target_group.configure_health_check(
+                path="/",
+                port="3000",
+                healthy_http_codes="200-399",
+                interval=Duration.seconds(10),
+                healthy_threshold_count=2,
+                unhealthy_threshold_count=3,
+            )
+            web.target_group.set_attribute("deregistration_delay.timeout_seconds", "30")
+            if web.task_definition.default_container:
+                web.task_definition.default_container.add_environment(
+                    "NEXTAUTH_URL",
+                    f"http://{web.load_balancer.load_balancer_dns_name}",
+                )
+            cfn_web_service = web.service.node.default_child
+            if isinstance(cfn_web_service, ecs.CfnService):
+                cfn_web_service.deployment_configuration = ecs.CfnService.DeploymentConfigurationProperty(
+                    minimum_healthy_percent=0,
+                    maximum_percent=200,
+                )
+            if web.task_definition.execution_role:
+                for _s in [
+                    db_url_secret,
+                    nextauth_secret,
+                    salt_secret,
+                    encryption_secret,
+                    clickhouse_url_secret,
+                    clickhouse_user_secret,
+                    clickhouse_password_secret,
+                    clickhouse_migration_url_secret,
+                    clickhouse_db_secret,
+                    clickhouse_migration_ssl_secret,
+                ]:
+                    _s.grant_read(web.task_definition.execution_role)
+            events_bucket.grant_read_write(web.task_definition.task_role)
+
+            web_sg = web.service.connections.security_groups[0]
+            rds_sg.add_ingress_rule(peer=web_sg, connection=ec2.Port.tcp(5432), description="Allow web to Postgres")
+            redis_sg.add_ingress_rule(peer=web_sg, connection=ec2.Port.tcp(6379), description="Allow web to Redis")
+
+            # --- Worker (after secrets)
+            task_def = ecs.FargateTaskDefinition(self, "WorkerTaskDef", cpu=512, memory_limit_mib=2048)
+            task_def.add_container(
+                "Worker",
+                image=ecs.ContainerImage.from_registry("langfuse/langfuse-worker:latest"),
+                logging=ecs.LogDrivers.aws_logs(stream_prefix="LangfuseWorker"),
+                environment={
+                    "REDIS_CONNECTION_STRING": f"redis://{redis.attr_redis_endpoint_address}:{redis.attr_redis_endpoint_port}",
+                    "LANGFUSE_TRACING_ENVIRONMENT": "prod",
+                    "NODE_OPTIONS": "--max-old-space-size=3072",
+                    "LANGFUSE_AUTO_CLICKHOUSE_MIGRATION_DISABLED": "true",
+                    "LANGFUSE_S3_EVENT_UPLOAD_BUCKET": events_bucket.bucket_name,
+                    "LANGFUSE_S3_EVENT_UPLOAD_REGION": cdk.Aws.REGION,
+                    "LANGFUSE_S3_EVENT_UPLOAD_PREFIX": "events/",
+                    "CLICKHOUSE_CLUSTER_ENABLED": "false",
+                },
+                secrets={
+                    "DATABASE_URL": ecs.Secret.from_secrets_manager(db_url_secret),
+                    "NEXTAUTH_SECRET": ecs.Secret.from_secrets_manager(nextauth_secret),
+                    "SALT": ecs.Secret.from_secrets_manager(salt_secret),
+                    "ENCRYPTION_KEY": ecs.Secret.from_secrets_manager(encryption_secret),
+                    "CLICKHOUSE_URL": ecs.Secret.from_secrets_manager(clickhouse_url_secret),
+                    "CLICKHOUSE_USER": ecs.Secret.from_secrets_manager(clickhouse_user_secret),
+                    "CLICKHOUSE_PASSWORD": ecs.Secret.from_secrets_manager(clickhouse_password_secret),
+                    "CLICKHOUSE_MIGRATION_URL": ecs.Secret.from_secrets_manager(clickhouse_migration_url_secret),
+                    "CLICKHOUSE_DB": ecs.Secret.from_secrets_manager(clickhouse_db_secret),
+                    "CLICKHOUSE_MIGRATION_SSL": ecs.Secret.from_secrets_manager(clickhouse_migration_ssl_secret),
+                },
+            )
+            worker = ecs.FargateService(
+                self,
+                "LangfuseWorkerService",
+                cluster=cluster,
+                task_definition=task_def,
+                desired_count=0,
+                assign_public_ip=False,
+                vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS),
+            )
+            cfn_worker_service = worker.node.default_child
+            if isinstance(cfn_worker_service, ecs.CfnService):
+                cfn_worker_service.deployment_configuration = ecs.CfnService.DeploymentConfigurationProperty(
+                    minimum_healthy_percent=0,
+                    maximum_percent=200,
+                )
+            if task_def.execution_role:
+                for _s in [
+                    db_url_secret,
+                    nextauth_secret,
+                    salt_secret,
+                    encryption_secret,
+                    clickhouse_url_secret,
+                    clickhouse_user_secret,
+                    clickhouse_password_secret,
+                    clickhouse_migration_url_secret,
+                    clickhouse_db_secret,
+                    clickhouse_migration_ssl_secret,
+                ]:
+                    _s.grant_read(task_def.execution_role)
+            events_bucket.grant_read_write(task_def.task_role)
+
+            worker_sg = worker.connections.security_groups[0]
+            rds_sg.add_ingress_rule(peer=worker_sg, connection=ec2.Port.tcp(5432), description="Allow worker to Postgres")
+            redis_sg.add_ingress_rule(peer=worker_sg, connection=ec2.Port.tcp(6379), description="Allow worker to Redis")
 
         CfnOutput(self, "AlbUrl", value=f"http://{web.load_balancer.load_balancer_dns_name}")
         CfnOutput(self, "EventsBucketName", value=events_bucket.bucket_name)

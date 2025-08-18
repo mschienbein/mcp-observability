@@ -245,6 +245,37 @@ This stack creates placeholders in Secrets Manager and wires them into both cont
 - `CLICKHOUSE_CLUSTER_ENABLED` defaults to `false`.
 - After updating secrets, force a new ECS deployment for the web and scale the worker as shown above.
 
+### Optional: provision free ClickHouse on EC2 (single node)
+
+For a free, self-hosted setup, the stack can optionally create a single EC2 instance with ClickHouse installed in private subnets and open only to the ECS services (ports 8123 HTTP and 9000 Native).
+
+Enable with the CDK context flag or use the helper script:
+
+```bash
+# Using the helper script (prints commands by default; does not apply changes)
+REGION=us-east-1 PROFILE=kinpachi APPLY=false \
+bash infra-cdk/scripts/provision_clickhouse_ec2.sh
+
+# When ready to apply secrets and ECS updates automatically:
+REGION=us-east-1 PROFILE=kinpachi APPLY=true \
+bash infra-cdk/scripts/provision_clickhouse_ec2.sh
+```
+
+What the script does:
+
+- Deploys with `-c PROVISION_CLICKHOUSE_EC2=true` to create a small EC2 instance and security group.
+- Retrieves outputs (ClickHouse EC2 private IP, secret names, ECS service names).
+- Prepares non-TLS internal URLs derived from the private IP:
+  - `CLICKHOUSE_URL=http://<private-ip>:8123`
+  - `CLICKHOUSE_MIGRATION_URL=clickhouse://<private-ip>:9000`
+  - `CLICKHOUSE_MIGRATION_SSL=false`
+- Optionally applies the above secrets and forces a new ECS deployment, and scales the worker to 1.
+
+Notes:
+
+- This EC2 instance is in private subnets; no public access is exposed.
+- For production, enable TLS (use HTTPS/8443 and Native/9440) and set `CLICKHOUSE_MIGRATION_SSL=true`.
+
 ### If a CloudFormation stack is stuck
 
 Sometimes an earlier failed deploy leaves a stack in a non-terminal state. Check and delete if needed before re-deploying:

@@ -1,0 +1,15 @@
+{
+  "commands": [
+    "set -euxo pipefail",
+    "dnf -y install docker || true",
+    "systemctl enable --now docker || true",
+    "usermod -aG docker ec2-user || true",
+    "mkdir -p /etc/clickhouse-server/config.d /etc/clickhouse-server/users.d /var/lib/clickhouse",
+    "printf '%s\n' '<clickhouse>' '  <listen_host>0.0.0.0</listen_host>' '  <listen_host>::</listen_host>' '</clickhouse>' > /etc/clickhouse-server/config.d/listen.xml",
+    "printf '%s\n' '<clickhouse>' '  <http_port>8123</http_port>' '  <tcp_port>9000</tcp_port>' '</clickhouse>' > /etc/clickhouse-server/config.d/ports.xml",
+    "printf '%s\n' '<clickhouse>' '  <users>' '    <default>' '      <password>langfuse</password>' '      <profile>default</profile>' '      <networks>' '        <ip>::/0</ip>' '      </networks>' '    </default>' '  </users>' '</clickhouse>' > /etc/clickhouse-server/users.d/default-user.xml",
+    "docker rm -f clickhouse || true",
+    "docker run -d --name clickhouse --restart unless-stopped -p 8123:8123 -p 9000:9000 -v /var/lib/clickhouse:/var/lib/clickhouse -v /etc/clickhouse-server/config.d:/etc/clickhouse-server/config.d -v /etc/clickhouse-server/users.d:/etc/clickhouse-server/users.d clickhouse/clickhouse-server:latest",
+    "for i in $(seq 1 24); do if curl -fsS http://127.0.0.1:8123/ping >/dev/null; then echo 'ClickHouse up (docker)'; break; else echo 'Waiting for ClickHouse (docker)...'; sleep 5; fi; done"
+  ]
+}
