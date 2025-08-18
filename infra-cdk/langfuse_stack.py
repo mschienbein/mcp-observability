@@ -184,55 +184,46 @@ class LangfuseStack(Stack):
                 # Ensure the ECR repo exists before the instance boots and tries to push/pull
                 ch_instance.node.add_dependency(ch_repo)
 
+                # Simplified, more robust ClickHouse setup using standard image without custom volume mounts
                 ch_instance.user_data.add_commands(
                     "set -euxo pipefail",
                     # Install Docker and AWS CLI
                     "dnf -y install docker awscli || yum -y install docker awscli",
                     "systemctl enable --now docker",
                     "usermod -aG docker ec2-user || true",
-                    # Prepare config, data, and log directories on host
-                    "mkdir -p /etc/clickhouse-server/config.d /etc/clickhouse-server/users.d /var/lib/clickhouse /var/log/clickhouse-server",
-                    # Open listen to VPC
-                    "cat >/etc/clickhouse-server/config.d/listen.xml <<'EOF'",
-                    "<clickhouse>",
-                    "  <listen_host>0.0.0.0</listen_host>",
-                    "  <listen_host>::</listen_host>",
-                    "</clickhouse>",
-                    "EOF",
-                    # Explicit ports
-                    "cat >/etc/clickhouse-server/config.d/ports.xml <<'EOF'",
-                    "<clickhouse>",
-                    "  <http_port>8123</http_port>",
-                    "  <tcp_port>9000</tcp_port>",
-                    "</clickhouse>",
-                    "EOF",
-                    # Default user with password and wide network for VPC access
-                    "cat >/etc/clickhouse-server/users.d/default-user.xml <<'EOF'",
-                    "<clickhouse>",
-                    "  <users>",
-                    "    <default>",
-                    "      <password>langfuse</password>",
-                    "      <profile>default</profile>",
-                    "      <networks>",
-                    "        <ip>::/0</ip>",
-                    "      </networks>",
-                    "    </default>",
-                    "  </users>",
-                    "</clickhouse>",
-                    "EOF",
-                    # ECR login and mirror if needed, then run container from ECR with pinned tag
-                    f"ECR_IMAGE='{ecr_image_uri}'",
+                    # ECR login with retry logic
                     f"REGION='{cdk.Aws.REGION}'",
+                    f"ECR_IMAGE='{ecr_image_uri}'",
+                    f"DOCKER_HUB_IMAGE='clickhouse/clickhouse-server:{image_tag}'",
                     "REGISTRY=$(echo ${ECR_IMAGE} | cut -d'/' -f1)",
-                    "aws ecr get-login-password --region ${REGION} | docker login --username AWS --password-stdin ${REGISTRY} || true",
-                    # Pull from ECR first; if not present yet, pull from Docker Hub, push to ECR, and proceed
-                    f"if ! docker pull '{ecr_image_uri}'; then docker pull 'clickhouse/clickhouse-server:{image_tag}'; docker tag 'clickhouse/clickhouse-server:{image_tag}' '{ecr_image_uri}'; docker push '{ecr_image_uri}' || true; fi",
-                    "docker rm -f clickhouse || true",
-                    # Ensure clickhouse user (typically 101:101) can write to mounted dirs
-                    "chown -R 101:101 /var/lib/clickhouse /var/log/clickhouse-server || true",
-                    f"docker run -d --name clickhouse --restart unless-stopped -p 8123:8123 -p 9000:9000 -v /var/lib/clickhouse:/var/lib/clickhouse -v /etc/clickhouse-server/config.d:/etc/clickhouse-server/config.d -v /etc/clickhouse-server/users.d:/etc/clickhouse-server/users.d -v /var/log/clickhouse-server:/var/log/clickhouse-server '{ecr_image_uri}'",
-                    # Health check
-                    "for i in {1..24}; do if curl -fsS http://127.0.0.1:8123/ping >/dev/null; then echo 'ClickHouse up (docker/ECR)'; break; else echo 'Waiting for ClickHouse (docker/ECR)...'; sleep 5; fi; done",
+                    "for i in {1..3}; do aws ecr get-login-password --region ${REGION} | docker login --username AWS --password-stdin ${REGISTRY} && break || sleep 5; done",
+                    # Robust image pull strategy: try ECR first, fallback to Docker Hub
+                    "IMAGE_TO_USE=${DOCKER_HUB_IMAGE}",
+                    "if docker pull ${ECR_IMAGE}; then IMAGE_TO_USE=${ECR_IMAGE}; else docker pull ${DOCKER_HUB_IMAGE} && docker tag ${DOCKER_HUB_IMAGE} ${ECR_IMAGE} && docker push ${ECR_IMAGE} || true; fi",
+                    # Stop any existing container
+                    "docker stop clickhouse || true",
+                    "docker rm clickhouse || true",
+                    # Run ClickHouse with minimal configuration (no custom volume mounts that cause issues)
+                    "docker run -d --name clickhouse --restart unless-stopped -p 8123:8123 -p 9000:9000 ${IMAGE_TO_USE}",
+                    # Enhanced health check with retry and fallback
+                    "echo 'Waiting for ClickHouse to start...'",
+                    "for i in {1..30}; do",
+                    "  if curl -fsS http://127.0.0.1:8123/ping >/dev/null 2>&1; then",
+                    "    echo 'ClickHouse is healthy and responding on port 8123'",
+                    "    break",
+                    "  elif [ $i -eq 30 ]; then",
+                    "    echo 'ClickHouse failed to start after 150 seconds, attempting restart...'",
+                    "    docker restart clickhouse || true",
+                    "    sleep 10",
+                    "    curl -fsS http://127.0.0.1:8123/ping >/dev/null 2>&1 && echo 'ClickHouse recovered' || echo 'ClickHouse still failing'",
+                    "  else",
+                    "    echo \"Attempt $i/30: ClickHouse not ready yet, waiting 5 seconds...\"",
+                    "    sleep 5",
+                    "  fi",
+                    "done",
+                    # Log final status
+                    "docker ps | grep clickhouse || echo 'ClickHouse container not running'",
+                    "ss -ltnp | grep -E '(8123|9000)' || echo 'ClickHouse ports not listening'",
                 )
 
             # --- ClickHouse Secrets (default to instance private IP if EC2 is provisioned)
@@ -263,7 +254,7 @@ class LangfuseStack(Stack):
                 self,
                 "ClickhousePassword",
                 description="CLICKHOUSE_PASSWORD for Langfuse v3",
-                secret_string_value=SecretValue.unsafe_plain_text(ch_pass_ctx or "langfuse"),
+                secret_string_value=SecretValue.unsafe_plain_text(ch_pass_ctx or "clickhouse123"),
             )
             clickhouse_migration_url_secret = secretsmanager.Secret(
                 self,
@@ -460,7 +451,7 @@ class LangfuseStack(Stack):
                 self,
                 "ClickhousePassword",
                 description="CLICKHOUSE_PASSWORD for Langfuse v3",
-                secret_string_value=SecretValue.unsafe_plain_text(ch_pass_ctx or "langfuse"),
+                secret_string_value=SecretValue.unsafe_plain_text(ch_pass_ctx or "clickhouse123"),
             )
             clickhouse_migration_url_secret = secretsmanager.Secret(
                 self,
