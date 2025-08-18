@@ -243,7 +243,8 @@ Common startup issues:
 This stack creates placeholders in Secrets Manager and wires them into both containers. Actions required:
 - Set `CLICKHOUSE_URL`, `CLICKHOUSE_USER`, `CLICKHOUSE_PASSWORD`, `CLICKHOUSE_DB` and optionally `CLICKHOUSE_MIGRATION_URL` + `CLICKHOUSE_MIGRATION_SSL` using the provided secret names in the stack outputs.
 - `CLICKHOUSE_CLUSTER_ENABLED` defaults to `false`.
-- After updating secrets, force a new ECS deployment for the web and scale the worker as shown above.
+- **IMPORTANT**: Run `scripts/setup_clickhouse_complete.sh` after ClickHouse is deployed to create the complete schema with all required columns including `environment` fields
+- After updating secrets and creating schema, force a new ECS deployment for the web and scale the worker as shown above.
 
 ### Optional: provision free ClickHouse on EC2 (single node)
 

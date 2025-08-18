@@ -118,6 +118,13 @@ The CDK stack creates AWS Secrets Manager entries for:
 
 ## Testing
 
-Currently no automated tests are configured. The `clients/` directory contains manual test scripts:
+Manual test scripts in the `clients/` directory:
 - `mcp_client.py`: Tests MCP server connectivity
-- `langfuse_smoke_test.py`: Validates Langfuse integration
+- `langfuse_test.py`: Comprehensive Langfuse SDK integration test
+
+Run tests with:
+```bash
+make langfuse-test          # Test Langfuse integration
+make mcp-tools-client       # Test tools server
+make mcp-feedback-client    # Test feedback server
+```
