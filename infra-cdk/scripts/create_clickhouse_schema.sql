@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
     sequence UInt64
 ) ENGINE = MergeTree ORDER BY sequence;
 
--- Traces table
+-- Traces table (with all required columns)
 CREATE TABLE IF NOT EXISTS traces (
     id String,
     timestamp DateTime64(3),
@@ -35,6 +35,12 @@ CREATE TABLE IF NOT EXISTS traces (
     input Nullable(String),
     output Nullable(String),
     environment Nullable(String),
+    external_id Nullable(String),
+    latency Nullable(Float64),
+    total_cost Nullable(Float64),
+    input_tokens Nullable(Int64),
+    output_tokens Nullable(Int64),
+    total_tokens Nullable(Int64),
     created_at DateTime64(3),
     updated_at DateTime64(3),
     event_ts DateTime64(3) DEFAULT now64(3),
@@ -43,7 +49,7 @@ CREATE TABLE IF NOT EXISTS traces (
 ORDER BY (project_id, id, event_ts)
 PARTITION BY toYYYYMM(timestamp);
 
--- Observations table
+-- Observations table (with all required columns)
 CREATE TABLE IF NOT EXISTS observations (
     id String,
     trace_id Nullable(String),
@@ -78,6 +84,7 @@ CREATE TABLE IF NOT EXISTS observations (
     prompt_tokens Nullable(Int64),
     total_tokens Nullable(Int64),
     environment Nullable(String),
+    latency Nullable(Float64),
     created_at DateTime64(3),
     updated_at DateTime64(3),
     event_ts DateTime64(3) DEFAULT now64(3),

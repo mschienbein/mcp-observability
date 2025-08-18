@@ -102,9 +102,7 @@ async def run_feedback(url: str, rating: Optional[float], comment: str,
                 args["comment"] = comment
             if session_id:
                 args["session_id"] = session_id
-            # user_id is tracked by middleware via headers; we include it here only for visibility
-            if user_id:
-                args["user_id"] = user_id  # not used by tool, but printed for debugging
+            # user_id is tracked by middleware via headers, not passed to tool
 
             if not args:
                 print("No rating/comment provided; nothing to submit. Use --rating and optional --comment.")

@@ -11,8 +11,24 @@ def register_dummy_tools(mcp: FastMCP):
     )
     async def dummy_long_running_task():
         lf = get_client()
-        with lf.start_span(name="dummy:work"):
-            t = random.uniform(0.2, 1.0)
-            time.sleep(t)
-            result = {"slept_seconds": round(t, 2), "value": random.randint(1, 100)}
-            return result
+        # Use observe decorator or manual event creation for tracing
+        event = lf.create_event(
+            name="dummy:work",
+            input={"task": "dummy_long_running_task"},
+            level="DEFAULT"
+        )
+        
+        t = random.uniform(0.2, 1.0)
+        time.sleep(t)
+        result = {"slept_seconds": round(t, 2), "value": random.randint(1, 100)}
+        
+        # Update event with output
+        if event:
+            lf.create_event(
+                name="dummy:complete",
+                output=result,
+                metadata={"duration_ms": int(t * 1000)},
+                level="DEFAULT"
+            )
+        
+        return result

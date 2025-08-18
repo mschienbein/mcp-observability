@@ -2,6 +2,75 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Migration/Deployment Instructions
+
+### Prerequisites
+1. AWS Account with appropriate permissions
+2. Langfuse v3 deployed (ECS + ClickHouse)
+3. Python 3.10+ with `uv` package manager
+4. Node.js 18+ for UI development
+
+### Required Environment Variables
+
+Create a `.env` file in the project root with:
+```bash
+# Langfuse Configuration (REQUIRED)
+LANGFUSE_SECRET_KEY=sk-lf-xxxx
+LANGFUSE_PUBLIC_KEY=pk-lf-xxxx
+LANGFUSE_HOST=http://your-langfuse-alb-url
+
+# Optional: Redis for distributed session tracking
+REDIS_URL=redis://localhost:6379
+
+# AWS Configuration (for infrastructure)
+AWS_REGION=us-east-1
+AWS_PROFILE=your-profile
+```
+
+### ClickHouse Schema Setup
+
+**CRITICAL**: The ClickHouse schema must be properly configured for Langfuse to work.
+
+1. Connect to your ClickHouse instance
+2. Run the complete schema from: `infra-cdk/scripts/create_clickhouse_schema.sql`
+3. This creates all required tables with proper columns for:
+   - Traces (with environment, latency, cost tracking)
+   - Observations (with metrics and performance data)
+   - Scores, schema_migrations, event_log, etc.
+
+### Quick Start
+
+```bash
+# 1. Clone and setup
+git clone <repo>
+cd mcp-observability
+
+# 2. Install dependencies
+uv venv
+uv pip install -e .
+
+# 3. Copy and configure .env file
+cp .env.example .env  # Edit with your credentials
+
+# 4. Start MCP servers
+# Terminal 1: Tools Server (port 3002)
+uv run python -m server.tools_server.main
+
+# Terminal 2: Feedback Server (port 3003)
+uv run python -m server.feedback_server.main
+
+# 5. Test the setup
+uv run python clients/test_langfuse_simple.py
+uv run python clients/mcp_client.py tools
+```
+
+### Key Files for Migration
+
+1. **Environment Config**: `server/common/config.py` - Auto-loads .env file
+2. **Middleware**: `server/common/mcp_obs_middleware.py` - Langfuse tracing integration
+3. **ClickHouse Schema**: `infra-cdk/scripts/create_clickhouse_schema.sql` - Complete DB schema
+4. **Test Scripts**: `clients/test_langfuse_*.py` - Verify integration
+
 ## Project Overview
 
 This is an MCP (Model Control Protocol) observability demo that implements separate FastMCP tools and feedback servers with Langfuse tracing. The project combines Python backend services, React frontend, and AWS CDK infrastructure-as-code.

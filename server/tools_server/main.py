@@ -2,6 +2,7 @@ import uvicorn
 from fastmcp import FastMCP
 from fastmcp.server.http import create_streamable_http_app
 from starlette.middleware import Middleware
+from server.common import config  # Load environment variables
 from server.common.mcp_obs_middleware import MCPObservabilityMiddleware
 from .tools import register_dummy_tools
 
