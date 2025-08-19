@@ -26,8 +26,7 @@ infra-cdk/
 │   │   ├── provision_clickhouse_ec2.sh
 │   │   └── setup_clickhouse_complete.sh
 │   └── database/           # Database schemas
-│       ├── create_clickhouse_schema.sql
-│       └── langfuse_official_clickhouse_schema.sql
+│       └── langfuse_clickhouse_schema.sql  # Official consolidated schema
 │
 ├── docs/                # Documentation
 │   ├── CDK_README.md       # CDK setup instructions

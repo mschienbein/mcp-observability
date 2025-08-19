@@ -2,7 +2,8 @@
 set -euo pipefail
 
 # Complete ClickHouse setup script for Langfuse v3
-# This script sets up ClickHouse with the complete schema including all required columns
+# This script sets up ClickHouse with the official consolidated schema
+# Schema file: ../database/langfuse_clickhouse_schema.sql
 
 REGION=${REGION:-us-east-1}
 PROFILE=${PROFILE:-default}
