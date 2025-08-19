@@ -1,0 +1,23 @@
+version: 1.2.1
+cache: true
+
+endpoints:
+  openAI:
+    apiKey: "user_provided"
+    models:
+      default:
+        - "gpt-4-turbo-preview"
+        - "gpt-4"
+        - "gpt-3.5-turbo"
+  anthropic:
+    apiKey: "user_provided"  
+    models:
+      default:
+        - "claude-3-opus-20240229"
+        - "claude-3-sonnet-20240229"
+        - "claude-3-haiku-20240307"
+  google:
+    apiKey: "user_provided"
+    models:
+      default:
+        - "gemini-pro"

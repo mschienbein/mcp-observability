@@ -1,0 +1,10 @@
+{
+  "app": "cd infra-cdk && uv run python app.py",
+  "context": {
+    "@aws-cdk/core:newStyleStackSynthesis": true,
+    "@aws-cdk/core:bootstrapQualifier": "mcpobs",
+    "@aws-cdk/aws-ecr-assets:dockerIgnoreSupport": true,
+    "@aws-cdk/aws-efs:defaultEncryptionAtRest": true,
+    "@aws-cdk/aws-iam:minimizePolicies": true
+  }
+}

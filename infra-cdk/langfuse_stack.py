@@ -13,6 +13,8 @@ from aws_cdk import (
     aws_ecr as ecr,
     aws_iam as iam,
     aws_secretsmanager as secretsmanager,
+    aws_cloudfront as cloudfront,
+    aws_cloudfront_origins as origins,
     CfnOutput,
 )
 from constructs import Construct
@@ -614,7 +616,29 @@ class LangfuseStack(Stack):
             rds_sg.add_ingress_rule(peer=worker_sg, connection=ec2.Port.tcp(5432), description="Allow worker to Postgres")
             redis_sg.add_ingress_rule(peer=worker_sg, connection=ec2.Port.tcp(6379), description="Allow worker to Redis")
 
+        # Create CloudFront distribution for HTTPS
+        langfuse_distribution = cloudfront.Distribution(
+            self,
+            "LangfuseCloudFront",
+            default_behavior=cloudfront.BehaviorOptions(
+                origin=origins.HttpOrigin(
+                    web.load_balancer.load_balancer_dns_name,
+                    protocol_policy=cloudfront.OriginProtocolPolicy.HTTP_ONLY,
+                    http_port=80,
+                ),
+                viewer_protocol_policy=cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+                allowed_methods=cloudfront.AllowedMethods.ALLOW_ALL,
+                cached_methods=cloudfront.CachedMethods.CACHE_GET_HEAD,
+                cache_policy=cloudfront.CachePolicy.CACHING_DISABLED,
+                origin_request_policy=cloudfront.OriginRequestPolicy.ALL_VIEWER,
+            ),
+            price_class=cloudfront.PriceClass.PRICE_CLASS_100,
+            enabled=True,
+            comment="Langfuse HTTPS Distribution",
+        )
+
         CfnOutput(self, "AlbUrl", value=f"http://{web.load_balancer.load_balancer_dns_name}")
+        CfnOutput(self, "LangfuseHTTPS", value=f"https://{langfuse_distribution.distribution_domain_name}", description="Langfuse HTTPS URL via CloudFront")
         CfnOutput(self, "EventsBucketName", value=events_bucket.bucket_name)
         # Expose ClickHouse secret names to simplify population post-deploy
         CfnOutput(self, "ClickhouseUrlSecretName", value=clickhouse_url_secret.secret_name)

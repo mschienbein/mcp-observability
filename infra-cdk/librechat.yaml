@@ -1,0 +1,68 @@
+version: 1.2.1
+cache: true
+
+# Registration
+registration:
+  socialLogins: []
+  allowedDomains: []
+
+# Interface
+interface:
+  privacyPolicy:
+    externalUrl: ""
+    openNewTab: false
+  termsOfService:
+    externalUrl: ""
+    openNewTab: false
+
+# File Configuration
+fileConfig:
+  endpoints:
+    assistants:
+      fileLimit: 5
+      fileSizeLimit: 10
+      totalSizeLimit: 50
+      supportedMimeTypes:
+        - "image/.*"
+        - "application/pdf"
+    openAI:
+      disabled: false
+      fileLimit: 5
+      fileSizeLimit: 10
+      totalSizeLimit: 50
+      supportedMimeTypes:
+        - "image/.*"
+        - "application/pdf"
+    default:
+      totalSizeLimit: 20
+
+# Model Configurations
+endpoints:
+  # OpenAI configuration
+  openAI:
+    # You can set API key to "user_provided" for users to provide their own
+    # Or use environment variable: ${OPENAI_API_KEY}
+    apiKey: "${OPENAI_API_KEY:user_provided}"
+    models:
+      default: ["gpt-3.5-turbo", "gpt-4"]
+      
+  # Anthropic configuration  
+  anthropic:
+    apiKey: "${ANTHROPIC_API_KEY:user_provided}"
+    models:
+      default: ["claude-3-sonnet-20240229", "claude-3-opus-20240229"]
+      
+  # Google configuration
+  google:
+    apiKey: "${GOOGLE_KEY:user_provided}"
+    models:
+      default: ["gemini-pro"]
+      
+  custom:
+    # Example custom endpoint configuration
+    - name: "Custom OpenAI Compatible"
+      apiKey: "${CUSTOM_API_KEY:user_provided}"
+      baseURL: "https://api.example.com/v1"
+      models:
+        default: ["model-1", "model-2"]
+      fetch: false
