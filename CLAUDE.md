@@ -113,29 +113,29 @@ uv run python server/feedback_server/main.py
 npm run server:feedback
 
 # Test MCP clients
-make mcp-tools-client
-make mcp-feedback-client
+uv run test-mcp-tools
+uv run test-mcp-feedback
 ```
 
 ### Frontend UI
 ```bash
-# Install dependencies (from root)
-make ui-install
+# Install dependencies
+uv run ui-install
 # OR
 npm --prefix ui install
 
 # Development server
-make ui-dev
+uv run ui-dev
 # OR
 npm run ui:dev
 
 # Build for production
-make ui-build
+uv run ui-build
 # OR  
 npm run ui:build
 
 # Preview production build
-make ui-preview
+uv run ui-preview
 # OR
 npm run ui:preview
 ```
@@ -208,7 +208,7 @@ Manual test scripts in the `clients/` directory:
 
 Run tests with:
 ```bash
-make langfuse-test          # Test Langfuse integration
-make mcp-tools-client       # Test tools server
-make mcp-feedback-client    # Test feedback server
+uv run test-langfuse        # Test Langfuse integration
+uv run test-mcp-tools       # Test tools server
+uv run test-mcp-feedback    # Test feedback server
 ```

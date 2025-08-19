@@ -31,3 +31,30 @@ line-length = 100
 [tool.isort]
 profile = "black"
 
+[project.scripts]
+# MCP Servers
+tools-server = "server.tools_server.main:main"
+feedback-server = "server.feedback_server.main:main"
+
+# Test Clients
+mcp-tools-client = "clients.mcp_client:test_tools"
+mcp-feedback-client = "clients.mcp_client:test_feedback"
+langfuse-test = "clients.langfuse_test:main"
+
+[tool.uv.scripts]
+# UI Development
+ui-install = "npm --prefix ui install"
+ui-dev = "npm --prefix ui run dev"
+ui-build = "npm --prefix ui run build" 
+ui-preview = "npm --prefix ui run preview"
+
+# Servers
+server-tools = "uv run python -m server.tools_server.main"
+server-feedback = "uv run python -m server.feedback_server.main"
+
+# Tests
+test-mcp-tools = "uv run python clients/mcp_client.py tools"
+test-mcp-feedback = "uv run python clients/mcp_client.py feedback"
+test-langfuse = "uv run python clients/langfuse_test.py"
+test-trace = "uv run python clients/test_langfuse_trace.py"
+
