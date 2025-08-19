@@ -2,13 +2,21 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Migration/Deployment Instructions
+## Project Status
+
+This MCP observability stack is fully deployed with:
+- **Langfuse v3**: Observability platform with ClickHouse backend (deployed on AWS)
+- **LibreChat**: Self-hosted AI chat interface (deployed on AWS)
+- **MCP Servers**: Tools and feedback servers with automatic Langfuse tracing
+- **Infrastructure**: Production-ready CDK stacks for both services
+
+## Deployment Instructions
 
 ### Prerequisites
 1. AWS Account with appropriate permissions
-2. Langfuse v3 deployed (ECS + ClickHouse)
-3. Python 3.10+ with `uv` package manager
-4. Node.js 18+ for UI development
+2. Python 3.10+ with `uv` package manager
+3. Node.js 18+ for UI development
+4. AWS CDK CLI: `npm install -g aws-cdk`
 
 ### Required Environment Variables
 
@@ -32,7 +40,7 @@ AWS_PROFILE=your-profile
 **CRITICAL**: The ClickHouse schema must be properly configured for Langfuse to work.
 
 1. Connect to your ClickHouse instance
-2. Run the complete schema from: `infra-cdk/scripts/create_clickhouse_schema.sql`
+2. Run the complete schema from: `infra-cdk/scripts/database/langfuse_clickhouse_schema.sql`
 3. This creates all required tables with proper columns for:
    - Traces (with environment, latency, cost tracking)
    - Observations (with metrics and performance data)
@@ -64,12 +72,13 @@ uv run python clients/test_langfuse_simple.py
 uv run python clients/mcp_client.py tools
 ```
 
-### Key Files for Migration
+### Key Files
 
 1. **Environment Config**: `server/common/config.py` - Auto-loads .env file
 2. **Middleware**: `server/common/mcp_obs_middleware.py` - Langfuse tracing integration
-3. **ClickHouse Schema**: `infra-cdk/scripts/create_clickhouse_schema.sql` - Complete DB schema
+3. **ClickHouse Schema**: `infra-cdk/scripts/database/langfuse_clickhouse_schema.sql` - Complete DB schema
 4. **Test Scripts**: `clients/test_langfuse_*.py` - Verify integration
+5. **CDK Stacks**: `infra-cdk/stacks/` - Langfuse and LibreChat deployments
 
 ## Project Overview
 
@@ -136,19 +145,25 @@ npm run ui:preview
 # Navigate to infra directory
 cd infra-cdk/
 
+# Install dependencies
+pip install -r requirements.txt
+
 # Set AWS credentials
-export AWS_PROFILE=kinpachi
+export AWS_PROFILE=your-profile
 export AWS_REGION=us-east-1
 
-# Synthesize CDK stack
-npx -y aws-cdk@^2 synth
+# Bootstrap CDK (first time only)
+cdk bootstrap --qualifier mcpobs
 
-# Deploy stack (uses qualifier 'mcpobs')
-npx -y aws-cdk@^2 deploy LangfuseStack --require-approval never
+# Deploy Langfuse stack
+cdk deploy LangfuseStack
+
+# Deploy LibreChat stack
+cdk deploy LibreChatStack
 
 # Optional: Deploy with ClickHouse EC2 instance
-REGION=us-east-1 PROFILE=kinpachi APPLY=true \
-bash infra-cdk/scripts/provision_clickhouse_ec2.sh
+REGION=us-east-1 APPLY=true \
+bash scripts/setup/provision_clickhouse_ec2.sh
 ```
 
 ## Code Standards
