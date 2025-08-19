@@ -16,3 +16,4 @@ cdk.context.json
 # Env
 *.env
 .env*
+*.egg-info/

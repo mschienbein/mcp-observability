@@ -29,9 +29,9 @@ infra-cdk/
 │       └── langfuse_clickhouse_schema.sql  # Official consolidated schema
 │
 ├── docs/                # Documentation
-│   ├── CDK_README.md       # CDK setup instructions
-│   ├── CLICKHOUSE_SCHEMA.md
-│   └── LIBRECHAT_README.md
+│   ├── LANGFUSE_DEPLOYMENT.md  # Langfuse deployment guide
+│   ├── LIBRECHAT_DEPLOYMENT.md # LibreChat deployment guide
+│   └── CLICKHOUSE_SETUP.md     # ClickHouse setup guide
 │
 ├── app.py               # Main CDK application
 ├── requirements.txt     # Python dependencies

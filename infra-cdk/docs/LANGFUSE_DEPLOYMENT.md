@@ -1,6 +1,6 @@
-# Langfuse AWS CDK Stack
+# Langfuse Deployment Guide
 
-This folder provisions a minimal, self-hosted Langfuse on AWS using managed services:
+This guide covers deploying Langfuse v3 observability platform on AWS using CDK.
 
 - VPC with 2 AZs and 1 NAT
 - ECS Fargate services
@@ -13,9 +13,11 @@ This folder provisions a minimal, self-hosted Langfuse on AWS using managed serv
 
 This stack is v3-ready: it provisions an S3 bucket for event uploads and ClickHouse secret placeholders to be populated post-deploy.
 
-Current implementation paths:
-- Stack: `infra-cdk/langfuse_stack.py`
-- App entrypoint: `infra-cdk/app.py`
+## Stack Components
+
+- **Stack Definition**: `stacks/langfuse_stack.py`
+- **App Entrypoint**: `app.py`
+- **ClickHouse Schema**: `scripts/database/langfuse_clickhouse_schema.sql`
 
 
 ## Architecture summary
