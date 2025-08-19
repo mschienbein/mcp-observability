@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 import os
 import aws_cdk as cdk
-from langfuse_stack import LangfuseStack
-from librechat_stack import LibreChatStack
+from stacks.langfuse_stack import LangfuseStack
+from stacks.librechat_stack import LibreChatStack
 
 app = cdk.App()
 
