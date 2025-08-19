@@ -1,0 +1,63 @@
+{
+  "mcpServers": {
+    "mcp-tools": {
+      "command": "uv",
+      "args": ["run", "python", "-m", "mcp.tools_server.main"],
+      "env": {
+        "LANGFUSE_PUBLIC_KEY": "${LANGFUSE_PUBLIC_KEY}",
+        "LANGFUSE_SECRET_KEY": "${LANGFUSE_SECRET_KEY}",
+        "LANGFUSE_HOST": "${LANGFUSE_HOST:-http://localhost:3000}",
+        "MCP_SERVER_PORT": "3002"
+      },
+      "type": "stdio",
+      "description": "MCP tools server with math and utility functions"
+    },
+    "mcp-feedback": {
+      "command": "uv",
+      "args": ["run", "python", "-m", "mcp.feedback_server.main"],
+      "env": {
+        "LANGFUSE_PUBLIC_KEY": "${LANGFUSE_PUBLIC_KEY}",
+        "LANGFUSE_SECRET_KEY": "${LANGFUSE_SECRET_KEY}",
+        "LANGFUSE_HOST": "${LANGFUSE_HOST:-http://localhost:3000}",
+        "MCP_SERVER_PORT": "3003"
+      },
+      "type": "stdio",
+      "description": "MCP feedback server for session feedback collection"
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/Users/mooki/Code/mcp-observability"],
+      "type": "stdio",
+      "description": "File system access to the project directory"
+    },
+    "memory": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"],
+      "type": "stdio",
+      "description": "Persistent memory storage across conversations"
+    },
+    "aws-knowledge-mcp-server": {
+      "type": "sse",
+      "serverUrl": "https://knowledge-mcp.global.api.aws",
+      "description": "AWS Knowledge Base MCP server"
+    },
+    "context7": {
+      "type": "sse",
+      "serverUrl": "https://mcp.context7.com/sse",
+      "description": "Context7 MCP service for code context"
+    },
+    "github": {
+      "type": "http",
+      "serverUrl": "https://api.githubcopilot.com/mcp/",
+      "headers": {
+        "Authorization": "${GITHUB_COPILOT_TOKEN}"
+      },
+      "description": "GitHub Copilot MCP integration"
+    }
+  },
+  "metadata": {
+    "project": "mcp-observability",
+    "description": "MCP servers with Langfuse observability integration",
+    "version": "0.1.0"
+  }
+}

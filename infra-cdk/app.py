@@ -3,6 +3,7 @@ import os
 import aws_cdk as cdk
 from stacks.langfuse_stack import LangfuseStack
 from stacks.librechat_stack import LibreChatStack
+from stacks.agentcore_mcp_stack import AgentCoreMCPStack
 
 app = cdk.App()
 
@@ -33,7 +34,17 @@ librechat_stack = LibreChatStack(
     description="LibreChat self-hosted AI chat interface - Simplified Demo"
 )
 
+# Deploy AgentCore MCP stack
+agentcore_stack = AgentCoreMCPStack(
+    app,
+    "AgentCoreMCPStack",
+    synthesizer=synth,
+    env=env,
+    description="MCP servers deployed with AWS AgentCore Runtime"
+)
+
 # Add stack dependencies if needed
 # librechat_stack.add_dependency(langfuse_stack)  # Uncomment if LibreChat depends on Langfuse
+# agentcore_stack.add_dependency(langfuse_stack)  # AgentCore can use Langfuse for tracing
 
 app.synth()

@@ -8,7 +8,8 @@ This MCP observability stack is fully deployed with:
 - **Langfuse v3**: Observability platform with ClickHouse backend (deployed on AWS)
 - **LibreChat**: Self-hosted AI chat interface (deployed on AWS)
 - **MCP Servers**: Tools and feedback servers with automatic Langfuse tracing
-- **Infrastructure**: Production-ready CDK stacks for both services
+- **AgentCore Runtime**: Support for deploying MCP servers to AWS Bedrock AgentCore (preview)
+- **Infrastructure**: Production-ready CDK stacks for all services
 
 ## Deployment Instructions
 
@@ -62,10 +63,10 @@ cp .env.example .env  # Edit with your credentials
 
 # 4. Start MCP servers
 # Terminal 1: Tools Server (port 3002)
-uv run python -m server.tools_server.main
+uv run python -m mcp.tools_server.main
 
 # Terminal 2: Feedback Server (port 3003)
-uv run python -m server.feedback_server.main
+uv run python -m mcp.feedback_server.main
 
 # 5. Test the setup
 uv run python clients/test_langfuse_simple.py
@@ -74,11 +75,12 @@ uv run python clients/mcp_client.py tools
 
 ### Key Files
 
-1. **Environment Config**: `server/common/config.py` - Auto-loads .env file
-2. **Middleware**: `server/common/mcp_obs_middleware.py` - Langfuse tracing integration
+1. **Environment Config**: `mcp/common/config.py` - Auto-loads .env file
+2. **Middleware**: `mcp/common/mcp_obs_middleware.py` - Langfuse tracing integration
 3. **ClickHouse Schema**: `infra-cdk/scripts/database/langfuse_clickhouse_schema.sql` - Complete DB schema
 4. **Test Scripts**: `clients/test_langfuse_*.py` - Verify integration
-5. **CDK Stacks**: `infra-cdk/stacks/` - Langfuse and LibreChat deployments
+5. **CDK Stacks**: `infra-cdk/stacks/` - Langfuse, LibreChat, and AgentCore deployments
+6. **AgentCore App**: `mcp/agentcore_app.py` - MCP servers configured for AgentCore Runtime
 
 ## Project Overview
 
@@ -87,11 +89,12 @@ This is an MCP (Model Control Protocol) observability demo that implements separ
 ## Architecture
 
 ### Components
-- **MCP Tools Server** (`server/tools_server/`): FastMCP server on port 3002 providing demo tools
-- **MCP Feedback Server** (`server/feedback_server/`): FastMCP server on port 3003 for feedback collection
+- **MCP Tools Server** (`mcp/tools_server/`): FastMCP server on port 3002 providing demo tools
+- **MCP Feedback Server** (`mcp/feedback_server/`): FastMCP server on port 3003 for feedback collection
+- **AgentCore Integration** (`mcp/agentcore_app.py`): MCP servers ready for AgentCore Runtime deployment
 - **UI** (`ui/`): React TypeScript frontend built with Vite
-- **Infrastructure** (`infra-cdk/`): AWS CDK stack for deploying Langfuse on AWS with ECS, RDS, ElastiCache, and optional ClickHouse
-- **Observability Middleware** (`server/common/mcp_obs_middleware.py`): Shared Langfuse tracing middleware that captures MCP session IDs and user IDs
+- **Infrastructure** (`infra-cdk/`): AWS CDK stacks for Langfuse, LibreChat, and AgentCore MCP deployment
+- **Observability Middleware** (`mcp/common/mcp_obs_middleware.py`): Shared Langfuse tracing middleware that captures MCP session IDs and user IDs
 
 ### Key Dependencies
 - **Python**: FastMCP, Langfuse, FastAPI, Uvicorn, Redis
@@ -101,20 +104,31 @@ This is an MCP (Model Control Protocol) observability demo that implements separ
 ## Common Development Commands
 
 ### Python MCP Servers
+
+#### Local Development
 ```bash
 # Start tools server (port 3002)
-uv run python server/tools_server/main.py
+uv run python mcp/tools_server/main.py
 # OR
-npm run server:tools
+uv run server-tools
 
 # Start feedback server (port 3003)  
-uv run python server/feedback_server/main.py
+uv run python mcp/feedback_server/main.py
 # OR
-npm run server:feedback
+uv run server-feedback
 
 # Test MCP clients
 uv run test-mcp-tools
 uv run test-mcp-feedback
+```
+
+#### AgentCore Deployment
+```bash
+# Deploy to AgentCore Runtime (recommended for production)
+uv run deploy-agentcore
+
+# Or deploy supporting Lambda infrastructure
+uv run deploy-agentcore-infra
 ```
 
 ### Frontend UI
@@ -158,7 +172,13 @@ uv run deploy-langfuse
 # Deploy LibreChat stack
 uv run deploy-librechat
 
-# Deploy all stacks
+# Deploy AgentCore MCP infrastructure
+uv run deploy-agentcore-infra
+
+# Deploy MCP servers to AgentCore Runtime
+uv run deploy-agentcore
+
+# Deploy all CDK stacks
 uv run deploy-all
 
 # Optional: Deploy with ClickHouse EC2 instance
