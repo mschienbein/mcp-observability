@@ -18,6 +18,13 @@ dependencies = [
   "mcp>=1.1.0",
 ]
 
+[project.optional-dependencies]
+# AWS CDK for infrastructure deployment
+cdk = [
+  "aws-cdk-lib==2.152.0",
+  "constructs==10.3.0",
+]
+
 [build-system]
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
@@ -57,4 +64,16 @@ test-mcp-tools = "uv run python clients/mcp_client.py tools"
 test-mcp-feedback = "uv run python clients/mcp_client.py feedback"
 test-langfuse = "uv run python clients/langfuse_test.py"
 test-trace = "uv run python clients/test_langfuse_trace.py"
+
+# Infrastructure Deployment
+cdk-install = "uv pip install -e .[cdk]"
+cdk-synth = "cd infra-cdk && npx -y aws-cdk@^2 synth"
+cdk-bootstrap = "cd infra-cdk && npx -y aws-cdk@^2 bootstrap --qualifier mcpobs"
+deploy-langfuse = "cd infra-cdk && npx -y aws-cdk@^2 deploy LangfuseStack"
+deploy-librechat = "cd infra-cdk && npx -y aws-cdk@^2 deploy LibreChatStack"
+deploy-all = "cd infra-cdk && npx -y aws-cdk@^2 deploy --all"
+cdk-destroy-langfuse = "cd infra-cdk && npx -y aws-cdk@^2 destroy LangfuseStack"
+cdk-destroy-librechat = "cd infra-cdk && npx -y aws-cdk@^2 destroy LibreChatStack"
+cdk-list = "cd infra-cdk && npx -y aws-cdk@^2 list"
+cdk-diff = "cd infra-cdk && npx -y aws-cdk@^2 diff"
 

@@ -34,8 +34,7 @@ infra-cdk/
 │   └── CLICKHOUSE_SETUP.md     # ClickHouse setup guide
 │
 ├── app.py               # Main CDK application
-├── requirements.txt     # Python dependencies
-├── cdk.json            # CDK configuration
+└── cdk.context.json     # CDK context
 └── cdk.out/            # CDK synthesis output (generated)
 ```
 
@@ -49,28 +48,28 @@ infra-cdk/
 
 ### Installation
 ```bash
-# Install Python dependencies
-pip install -r requirements.txt
+# Install CDK dependencies
+uv run cdk-install
 
 # Bootstrap CDK (first time only)
-cdk bootstrap --qualifier mcpobs
+uv run cdk-bootstrap
 ```
 
 ### Deployment
 
 #### Deploy Langfuse Observability
 ```bash
-cdk deploy LangfuseStack
+uv run deploy-langfuse
 ```
 
 #### Deploy LibreChat
 ```bash
-cdk deploy LibreChatStack
+uv run deploy-librechat
 ```
 
 #### Deploy All Stacks
 ```bash
-cdk deploy --all
+uv run deploy-all
 ```
 
 ### Configuration
@@ -106,10 +105,11 @@ cdk deploy --all
 ```
 
 ### Useful Commands
-- `cdk ls` - List all stacks
-- `cdk synth` - Synthesize CloudFormation templates
-- `cdk diff` - Compare deployed stack with current state
-- `cdk destroy` - Remove deployed stack
+- `uv run cdk-list` - List all stacks
+- `uv run cdk-synth` - Synthesize CloudFormation templates
+- `uv run cdk-diff` - Compare deployed stack with current state
+- `uv run cdk-destroy-langfuse` - Remove Langfuse stack
+- `uv run cdk-destroy-librechat` - Remove LibreChat stack
 
 ### Environment Variables
 Create a `.env` file in the project root:

@@ -142,27 +142,27 @@ npm run ui:preview
 
 ### Infrastructure Deployment
 ```bash
-# Navigate to infra directory
-cd infra-cdk/
-
-# Install dependencies
-pip install -r requirements.txt
+# Install CDK dependencies (first time only)
+uv run cdk-install
 
 # Set AWS credentials
 export AWS_PROFILE=your-profile
 export AWS_REGION=us-east-1
 
 # Bootstrap CDK (first time only)
-cdk bootstrap --qualifier mcpobs
+uv run cdk-bootstrap
 
 # Deploy Langfuse stack
-cdk deploy LangfuseStack
+uv run deploy-langfuse
 
 # Deploy LibreChat stack
-cdk deploy LibreChatStack
+uv run deploy-librechat
+
+# Deploy all stacks
+uv run deploy-all
 
 # Optional: Deploy with ClickHouse EC2 instance
-REGION=us-east-1 APPLY=true \
+cd infra-cdk && REGION=us-east-1 APPLY=true \
 bash scripts/setup/provision_clickhouse_ec2.sh
 ```
 
