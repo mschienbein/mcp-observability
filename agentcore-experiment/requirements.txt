@@ -1,13 +1,18 @@
-fastmcp>=2.10.0
-bedrock-agentcore-starter-toolkit>=0.1.0
-boto3>=1.34.0
-python-dotenv>=1.0.0
+# Core dependencies
+fastmcp>=2.11.3  # Latest as of December 2024
+bedrock-agentcore-starter-toolkit>=0.1.6  # Latest version available
+boto3>=1.35.90  # December 2024 latest
+python-dotenv>=1.0.1  # Latest 2024 release
 
 # OpenTelemetry dependencies (optional but recommended)
-opentelemetry-api>=1.20.0
-opentelemetry-sdk>=1.20.0
-opentelemetry-instrumentation>=0.41b0
-opentelemetry-instrumentation-aws-lambda>=0.41b0
-opentelemetry-exporter-otlp>=1.20.0
-opentelemetry-exporter-otlp-proto-grpc>=1.20.0
-opentelemetry-semantic-conventions>=0.41b0
+# Latest stable versions as of December 2024
+opentelemetry-api>=1.29.0
+opentelemetry-sdk>=1.29.0
+opentelemetry-instrumentation>=0.51b0  # Beta version
+opentelemetry-instrumentation-aws-lambda>=0.51b0  # Beta version
+opentelemetry-exporter-otlp>=1.29.0
+opentelemetry-exporter-otlp-proto-grpc>=1.29.0
+opentelemetry-semantic-conventions>=0.51b0  # Beta version
+
+# Note: OpenTelemetry instrumentation packages are in beta (b0 suffix)
+# These are pre-release versions but stable enough for production use

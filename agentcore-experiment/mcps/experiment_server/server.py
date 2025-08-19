@@ -21,12 +21,8 @@ from tools import (
 )
 
 # Initialize MCP server for AgentCore compatibility
-# MUST use stateless_http=True for AgentCore Runtime
 mcp = FastMCP(
-    name="AgentCore Experiment Server",
-    host="0.0.0.0",
-    port=8000,
-    stateless_http=True
+    name="AgentCore Experiment Server"
 )
 
 # Register all tools with the MCP server
@@ -59,7 +55,13 @@ def main():
     )
     
     # Run with streamable-http transport for AgentCore Runtime
-    mcp.run(transport="streamable-http")
+    # Configuration moved to run() to avoid deprecation warnings
+    mcp.run(
+        transport="streamable-http",
+        host="0.0.0.0",
+        port=8000,
+        stateless_http=True
+    )
 
 
 if __name__ == "__main__":

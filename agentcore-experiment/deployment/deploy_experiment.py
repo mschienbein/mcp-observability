@@ -55,23 +55,38 @@ def setup_cognito_user_pool():
             user_pool_id = response['UserPool']['Id']
             print(f"Created new user pool: {user_pool_id}")
         
-        # Create app client
-        app_client_response = cognito_client.create_user_pool_client(
-            UserPoolId=user_pool_id,
-            ClientName='mcp-experiment-client',
-            GenerateSecret=False,
-            ExplicitAuthFlows=[
-                'ALLOW_USER_PASSWORD_AUTH',
-                'ALLOW_REFRESH_TOKEN_AUTH'
-            ]
-        )
-        client_id = app_client_response['UserPoolClient']['ClientId']
+        # Create app client with proper auth flows
+        try:
+            # Check if client already exists
+            clients = cognito_client.list_user_pool_clients(UserPoolId=user_pool_id)
+            existing_client = None
+            for client in clients['UserPoolClients']:
+                if client['ClientName'] == 'mcp-experiment-client':
+                    existing_client = client
+                    client_id = client['ClientId']
+                    break
+            
+            if not existing_client:
+                app_client_response = cognito_client.create_user_pool_client(
+                    UserPoolId=user_pool_id,
+                    ClientName='mcp-experiment-client',
+                    GenerateSecret=False,
+                    ExplicitAuthFlows=[
+                        'ALLOW_USER_PASSWORD_AUTH',
+                        'ALLOW_REFRESH_TOKEN_AUTH',
+                        'ALLOW_ADMIN_USER_PASSWORD_AUTH'  # Required for AdminInitiateAuth
+                    ]
+                )
+                client_id = app_client_response['UserPoolClient']['ClientId']
+        except Exception as e:
+            print(f"Error creating app client: {e}")
+            raise
         
         # Get region
         region = boto3.Session().region_name
         
-        # Build discovery URL for JWT validation
-        discovery_url = f"https://cognito-idp.{region}.amazonaws.com/{user_pool_id}/.well-known/jwks.json"
+        # Build discovery URL for JWT validation (OpenID configuration format)
+        discovery_url = f"https://cognito-idp.{region}.amazonaws.com/{user_pool_id}/.well-known/openid-configuration"
         
         # Create a test user and get bearer token
         username = "mcp-test-user"
@@ -141,13 +156,14 @@ def main():
     print()
     
     # Check required files
+    # Script is in deployment/ folder, need to go up one level
+    project_dir = Path(__file__).parent.parent
     required_files = ['mcps/experiment_server/server.py', 'requirements.txt']
-    script_dir = Path(__file__).parent
     
     for file in required_files:
-        file_path = script_dir / file
+        file_path = project_dir / file
         if not file_path.exists():
-            print(f"❌ Required file not found: {file}")
+            print(f"❌ Required file not found: {file_path}")
             sys.exit(1)
     print("✓ All required files found")
     print()
@@ -174,6 +190,11 @@ def main():
     
     # Configure the runtime
     print("\nConfiguring AgentCore Runtime...")
+    
+    # Change to project directory for correct relative paths
+    os.chdir(project_dir)
+    print(f"Working directory: {os.getcwd()}")
+    
     try:
         response = agentcore_runtime.configure(
             entrypoint="mcps/experiment_server/server.py",
