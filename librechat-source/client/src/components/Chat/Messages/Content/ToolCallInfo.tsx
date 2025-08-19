@@ -1,5 +1,8 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { UIResourceRenderer } from '@mcp-ui/client';
 import { useLocalize } from '~/hooks';
+import { useMCPResources } from '~/Providers';
+import { detectMCPUIResource } from './MCPUIDetector';
 
 function OptimizedCodeBlock({ text, maxHeight = 320 }: { text: string; maxHeight?: number }) {
   return (
@@ -32,6 +35,8 @@ export default function ToolCallInfo({
   pendingAuth?: boolean;
 }) {
   const localize = useLocalize();
+  const { addResource } = useMCPResources();
+  
   const formatText = (text: string) => {
     try {
       return JSON.stringify(JSON.parse(text), null, 2);
@@ -51,6 +56,26 @@ export default function ToolCallInfo({
         : localize('com_assistants_attempt_info');
   }
 
+  // Check if output is an MCP UI resource
+  const mcpResource = detectMCPUIResource(output);
+  
+  // Debug logging
+  console.log('ToolCallInfo - Checking output for MCP UI:', {
+    function_name,
+    hasOutput: !!output,
+    outputLength: output?.length,
+    isMCPResource: mcpResource.isMCPResource,
+    resourceUri: mcpResource.resource?.uri
+  });
+  
+  // Store the resource if it's an MCP UI resource
+  useEffect(() => {
+    if (mcpResource.isMCPResource && mcpResource.resource) {
+      console.log('ToolCallInfo - Storing MCP UI resource:', mcpResource.resource.uri);
+      addResource(mcpResource.resource);
+    }
+  }, [mcpResource, addResource]);
+
   return (
     <div className="w-full p-2">
       <div style={{ opacity: 1 }}>
@@ -60,12 +85,25 @@ export default function ToolCallInfo({
         </div>
         {output && (
           <>
-            <div className="my-2 text-sm font-medium text-text-primary">
-              {localize('com_ui_result')}
-            </div>
-            <div>
-              <OptimizedCodeBlock text={formatText(output)} maxHeight={250} />
-            </div>
+            {mcpResource.isMCPResource && mcpResource.resource ? (
+              // Render MCP UI resource as interactive HTML
+              <UIResourceRenderer 
+                resource={mcpResource.resource}
+                onUIAction={(result: any) => {
+                  console.log('MCP UI Action:', result);
+                }}
+              />
+            ) : (
+              // Render normal output as code block
+              <>
+                <div className="my-2 text-sm font-medium text-text-primary">
+                  {localize('com_ui_result')}
+                </div>
+                <div>
+                  <OptimizedCodeBlock text={formatText(output)} maxHeight={250} />
+                </div>
+              </>
+            )}
           </>
         )}
       </div>

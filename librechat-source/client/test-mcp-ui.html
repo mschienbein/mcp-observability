@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP UI Test Page</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        h2 {
+            color: #666;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 5px;
+        }
+        .test-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+        .status {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .status.success {
+            background: #28a745;
+            color: white;
+        }
+        .status.pending {
+            background: #ffc107;
+            color: #333;
+        }
+        .status.error {
+            background: #dc3545;
+            color: white;
+        }
+        .log-output {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+        .iframe-container {
+            border: 2px dashed #007bff;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 5px;
+            background: white;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .instructions {
+            background: #e8f4fd;
+            border: 1px solid #b8daff;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .instructions h3 {
+            margin-top: 0;
+            color: #004085;
+        }
+        .instructions ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .instructions li {
+            margin-bottom: 8px;
+        }
+        .instructions code {
+            background: #fff;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 MCP UI Integration Test Page</h1>
+        <p>This page tests the MCP UI rendering functionality in LibreChat</p>
+        
+        <div class="instructions">
+            <h3>📋 Testing Instructions</h3>
+            <ol>
+                <li>Open LibreChat in your browser (usually <code>http://localhost:3090</code>)</li>
+                <li>Start a new conversation with a model that has MCP tools enabled</li>
+                <li>Try these commands in the chat:
+                    <ul>
+                        <li><code>Show me the user registration form</code></li>
+                        <li><code>Display the system dashboard</code></li>
+                        <li><code>Show me a data table with pagination</code></li>
+                        <li><code>Create a bar chart visualization</code></li>
+                        <li><code>Show me the settings panel</code></li>
+                    </ul>
+                </li>
+                <li>Check the browser console for debug logs (press F12)</li>
+                <li>Look for these console messages:
+                    <ul>
+                        <li><code>✅ MCP UI Resource detected!</code> - Resource was found in tool output</li>
+                        <li><code>ToolCallInfo - Storing MCP UI resource:</code> - Resource is being stored</li>
+                        <li><code>MCP UI Component Detected!</code> - HTML block contains UI component</li>
+                    </ul>
+                </li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Expected MCP UI Resource Format</h2>
+        <div class="test-section">
+            <h3>Tool Output Structure</h3>
+            <div class="log-output">
+{
+  "type": "resource",
+  "resource": {
+    "uri": "ui://form/user-registration",
+    "name": "User Registration Form",
+    "mimeType": "text/html",
+    "text": "&lt;div&gt;...HTML content...&lt;/div&gt;"
+  }
+}
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Test MCP UI Components</h2>
+        
+        <div class="test-section">
+            <h3>1. Form Component <span class="status pending" id="form-status">Not Tested</span></h3>
+            <p>Tests interactive form submission with postMessage communication</p>
+            <button onclick="testFormComponent()">Test Form UI</button>
+            <div class="iframe-container" id="form-container" style="display:none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>2. Dashboard Component <span class="status pending" id="dashboard-status">Not Tested</span></h3>
+            <p>Tests dynamic dashboard with action buttons</p>
+            <button onclick="testDashboardComponent()">Test Dashboard UI</button>
+            <div class="iframe-container" id="dashboard-container" style="display:none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>3. Table Component <span class="status pending" id="table-status">Not Tested</span></h3>
+            <p>Tests paginated data table with actions</p>
+            <button onclick="testTableComponent()">Test Table UI</button>
+            <div class="iframe-container" id="table-container" style="display:none;"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Console Output</h2>
+        <div class="log-output" id="console-log">
+            Console logs will appear here...
+        </div>
+    </div>
+
+    <script>
+        // Override console.log to display in our log area
+        const originalLog = console.log;
+        const logElement = document.getElementById('console-log');
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            const message = args.map(arg => 
+                typeof arg === 'object' ? JSON.stringify(arg, null, 2) : arg
+            ).join(' ');
+            logElement.innerHTML += message + '\n';
+            logElement.scrollTop = logElement.scrollHeight;
+        };
+
+        // Listen for messages from iframes
+        window.addEventListener('message', function(event) {
+            console.log('Received message from iframe:', event.data);
+        });
+
+        function createMCPUIFrame(html, containerId) {
+            const container = document.getElementById(containerId);
+            container.style.display = 'block';
+            container.innerHTML = '';
+            
+            const iframe = document.createElement('iframe');
+            iframe.style.width = '100%';
+            iframe.style.border = 'none';
+            iframe.style.minHeight = '300px';
+            
+            // Create blob URL for security
+            const blob = new Blob([html], { type: 'text/html' });
+            iframe.src = URL.createObjectURL(blob);
+            
+            container.appendChild(iframe);
+            
+            // Auto-resize based on content
+            iframe.onload = function() {
+                try {
+                    const height = iframe.contentDocument.body.scrollHeight;
+                    iframe.style.height = height + 'px';
+                } catch(e) {
+                    console.log('Cannot access iframe content (cross-origin)');
+                }
+            };
+            
+            return iframe;
+        }
+
+        function testFormComponent() {
+            console.log('Testing Form Component...');
+            const html = `
+                <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 500px; margin: 20px auto; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <h2 style="color: #333; margin-bottom: 20px;">User Registration Form</h2>
+                    <form id="userForm">
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 5px; color: #666;">Name:</label>
+                            <input type="text" name="name" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 5px; color: #666;">Email:</label>
+                            <input type="email" name="email" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
+                        </div>
+                        <button type="submit" style="background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px;">Submit</button>
+                    </form>
+                    <script>
+                        document.getElementById('userForm').addEventListener('submit', function(e) {
+                            e.preventDefault();
+                            const formData = new FormData(e.target);
+                            const data = Object.fromEntries(formData);
+                            window.parent.postMessage({type: 'form-submit', data: data}, '*');
+                        });
+                    </script>
+                </div>
+            `;
+            
+            createMCPUIFrame(html, 'form-container');
+            document.getElementById('form-status').className = 'status success';
+            document.getElementById('form-status').textContent = 'Loaded';
+            console.log('✅ Form component loaded successfully');
+        }
+
+        function testDashboardComponent() {
+            console.log('Testing Dashboard Component...');
+            const html = `
+                <div style="font-family: system-ui, -apple-system, sans-serif; padding: 20px; background: #f5f5f5; min-height: 400px;">
+                    <h1 style="color: #333; margin-bottom: 20px;">System Dashboard</h1>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px;">
+                        <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                            <h3 style="color: #666; margin: 0; font-size: 14px;">Current Time</h3>
+                            <p style="font-size: 24px; margin: 10px 0; color: #333;">${new Date().toLocaleTimeString()}</p>
+                        </div>
+                        <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                            <h3 style="color: #666; margin: 0; font-size: 14px;">Active Users</h3>
+                            <p style="font-size: 36px; margin: 10px 0; color: #007bff;">42</p>
+                        </div>
+                        <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                            <h3 style="color: #666; margin: 0; font-size: 14px;">System Status</h3>
+                            <p style="font-size: 24px; margin: 10px 0; color: #28a745;">● Online</p>
+                        </div>
+                    </div>
+                    <script>
+                        // Send a test message when dashboard loads
+                        window.parent.postMessage({type: 'dashboard-loaded'}, '*');
+                    </script>
+                </div>
+            `;
+            
+            createMCPUIFrame(html, 'dashboard-container');
+            document.getElementById('dashboard-status').className = 'status success';
+            document.getElementById('dashboard-status').textContent = 'Loaded';
+            console.log('✅ Dashboard component loaded successfully');
+        }
+
+        function testTableComponent() {
+            console.log('Testing Table Component...');
+            const html = `
+                <div style="font-family: system-ui, -apple-system, sans-serif; padding: 20px;">
+                    <h2 style="color: #333; margin-bottom: 20px;">📊 Data Table</h2>
+                    <div style="background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background: #f8f9fa;">
+                                    <th style="padding: 12px; text-align: left;">ID</th>
+                                    <th style="padding: 12px; text-align: left;">Name</th>
+                                    <th style="padding: 12px; text-align: left;">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td style="padding: 12px; border-top: 1px solid #ddd;">#1</td><td style="padding: 12px; border-top: 1px solid #ddd;">User 1</td><td style="padding: 12px; border-top: 1px solid #ddd;">Active</td></tr>
+                                <tr><td style="padding: 12px; border-top: 1px solid #ddd;">#2</td><td style="padding: 12px; border-top: 1px solid #ddd;">User 2</td><td style="padding: 12px; border-top: 1px solid #ddd;">Active</td></tr>
+                                <tr><td style="padding: 12px; border-top: 1px solid #ddd;">#3</td><td style="padding: 12px; border-top: 1px solid #ddd;">User 3</td><td style="padding: 12px; border-top: 1px solid #ddd;">Inactive</td></tr>
+                            </tbody>
+                        </table>
+                        <div style="padding: 15px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #ddd;">
+                            <span style="color: #666;">Showing 1 to 3 of 100 entries</span>
+                            <button onclick="window.parent.postMessage({type: 'pagination', page: 2}, '*')" style="padding: 5px 10px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Next</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            createMCPUIFrame(html, 'table-container');
+            document.getElementById('table-status').className = 'status success';
+            document.getElementById('table-status').textContent = 'Loaded';
+            console.log('✅ Table component loaded successfully');
+        }
+
+        // Initial log
+        console.log('MCP UI Test Page Loaded');
+        console.log('Ready to test MCP UI components');
+    </script>
+</body>
+</html>

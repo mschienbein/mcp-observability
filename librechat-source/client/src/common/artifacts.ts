@@ -1,3 +1,12 @@
+export enum ArtifactType {
+  CODE = 'code',
+  MERMAID = 'mermaid',
+  HTML = 'html',
+  MARKDOWN = 'markdown',
+  MCP_UI = 'mcp_ui',
+  INTERACTIVE_TOOL = 'interactive_tool'
+}
+
 export interface CodeBlock {
   id: string;
   language: string;
@@ -14,6 +23,8 @@ export interface Artifact {
   content?: string;
   title?: string;
   type?: string;
+  metadata?: Record<string, any>;
+  mcpResource?: any; // MCP UI Resource data
 }
 
 export type ArtifactFiles =

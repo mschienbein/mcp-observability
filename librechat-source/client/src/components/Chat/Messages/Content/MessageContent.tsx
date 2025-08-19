@@ -5,6 +5,7 @@ import type { TMessage } from 'librechat-data-provider';
 import type { TMessageContentProps, TDisplayProps } from '~/common';
 import Error from '~/components/Messages/Content/Error';
 import Thinking from '~/components/Artifacts/Thinking';
+import { parseMCPUIResources, hasMCPUISummaryHeader } from '~/utils/mcpUIParser';
 import { useChatContext } from '~/Providers';
 import MarkdownLite from './MarkdownLite';
 import EditMessage from './EditMessage';
@@ -81,9 +82,25 @@ const DisplayMessage = ({ text, isCreatedByUser, message, showCursor }: TDisplay
     [message.messageId, latestMessage?.messageId],
   );
 
+  // Check if this message contains MCP UI resource summaries
+  const mcpUIData = useMemo(() => {
+    if (!isCreatedByUser && hasMCPUISummaryHeader(text)) {
+      return parseMCPUIResources(text);
+    }
+    return { hasResources: false, resources: [], cleanText: text };
+  }, [text, isCreatedByUser]);
+
   let content: React.ReactElement;
   if (!isCreatedByUser) {
-    content = <Markdown content={text} isLatestMessage={isLatestMessage} />;
+    // If we have MCP UI resources, only show the clean text without the links
+    const displayText = mcpUIData.hasResources ? mcpUIData.cleanText : text;
+    
+    // Skip rendering if it's just the MCP UI summary header with no other content
+    if (mcpUIData.hasResources && (!displayText || displayText.length < 10)) {
+      return null;
+    }
+    
+    content = <Markdown content={displayText} isLatestMessage={isLatestMessage} />;
   } else if (enableUserMsgMarkdown) {
     content = <MarkdownLite content={text} />;
   } else {
