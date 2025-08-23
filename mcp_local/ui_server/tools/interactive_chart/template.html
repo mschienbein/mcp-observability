@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Interactive Chart</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            margin: 0;
+        }
+        .chart-container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #1a202c;
+            margin-bottom: 10px;
+        }
+        .controls {
+            margin-bottom: 30px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        button:hover {
+            background: #5a67d8;
+            transform: translateY(-2px);
+        }
+        button.active {
+            background: #48bb78;
+        }
+        select {
+            padding: 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .chart-wrapper {
+            position: relative;
+            height: 400px;
+            margin-top: 20px;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 30px;
+        }
+        .stat-card {
+            background: #f7fafc;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .stat-label {
+            color: #718096;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="chart-container">
+        <h1>📈 {{ chart_title }}</h1>
+        
+        <div class="controls">
+            <select id="chartType" onchange="updateChartType()">
+                <option value="line">Line Chart</option>
+                <option value="bar">Bar Chart</option>
+                <option value="pie">Pie Chart</option>
+                <option value="doughnut">Doughnut Chart</option>
+                <option value="radar">Radar Chart</option>
+                <option value="polarArea">Polar Area</option>
+            </select>
+            
+            <button onclick="randomizeData()">🎲 Randomize Data</button>
+            <button onclick="addDataPoint()">➕ Add Point</button>
+            <button onclick="removeDataPoint()">➖ Remove Point</button>
+            <button onclick="toggleAnimation()">🎬 Toggle Animation</button>
+        </div>
+        
+        <div class="chart-wrapper">
+            <canvas id="myChart"></canvas>
+        </div>
+        
+        <div class="stats" id="statsContainer">
+            <!-- Stats will be dynamically generated -->
+        </div>
+    </div>
+    
+    <script>
+        // Chart configuration
+        const ctx = document.getElementById('myChart').getContext('2d');
+        let chartType = '{{ initial_chart_type }}';
+        let animationEnabled = true;
+        
+        // Initial data (will be replaced by template)
+        const initialData = {{ chart_data }};
+        
+        // Color palette
+        const colors = {
+            primary: 'rgba(102, 126, 234, 0.8)',
+            secondary: 'rgba(72, 187, 120, 0.8)',
+            tertiary: 'rgba(251, 191, 36, 0.8)',
+            quaternary: 'rgba(239, 68, 68, 0.8)',
+            quinary: 'rgba(139, 92, 246, 0.8)',
+            borders: {
+                primary: 'rgba(102, 126, 234, 1)',
+                secondary: 'rgba(72, 187, 120, 1)',
+                tertiary: 'rgba(251, 191, 36, 1)',
+                quaternary: 'rgba(239, 68, 68, 1)',
+                quinary: 'rgba(139, 92, 246, 1)'
+            }
+        };
+        
+        // Create initial chart
+        let myChart = new Chart(ctx, {
+            type: chartType,
+            data: initialData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: {
+                    duration: animationEnabled ? 1000 : 0
+                },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: false
+                    }
+                },
+                scales: chartType === 'line' || chartType === 'bar' ? {
+                    y: {
+                        beginAtZero: true
+                    }
+                } : {}
+            }
+        });
+        
+        // Update chart type
+        function updateChartType() {
+            const select = document.getElementById('chartType');
+            chartType = select.value;
+            
+            // Destroy old chart
+            myChart.destroy();
+            
+            // Create new chart with new type
+            myChart = new Chart(ctx, {
+                type: chartType,
+                data: initialData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        duration: animationEnabled ? 1000 : 0
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        }
+                    },
+                    scales: ['line', 'bar'].includes(chartType) ? {
+                        y: {
+                            beginAtZero: true
+                        }
+                    } : {}
+                }
+            });
+            
+            updateStats();
+        }
+        
+        // Randomize data
+        function randomizeData() {
+            myChart.data.datasets.forEach(dataset => {
+                dataset.data = dataset.data.map(() => Math.floor(Math.random() * 100));
+            });
+            myChart.update();
+            updateStats();
+        }
+        
+        // Add data point
+        function addDataPoint() {
+            const newLabel = `Point ${myChart.data.labels.length + 1}`;
+            myChart.data.labels.push(newLabel);
+            
+            myChart.data.datasets.forEach(dataset => {
+                dataset.data.push(Math.floor(Math.random() * 100));
+            });
+            
+            myChart.update();
+            updateStats();
+        }
+        
+        // Remove data point
+        function removeDataPoint() {
+            if (myChart.data.labels.length > 1) {
+                myChart.data.labels.pop();
+                myChart.data.datasets.forEach(dataset => {
+                    dataset.data.pop();
+                });
+                myChart.update();
+                updateStats();
+            }
+        }
+        
+        // Toggle animation
+        function toggleAnimation() {
+            animationEnabled = !animationEnabled;
+            myChart.options.animation.duration = animationEnabled ? 1000 : 0;
+            myChart.update();
+        }
+        
+        // Update statistics
+        function updateStats() {
+            const container = document.getElementById('statsContainer');
+            container.innerHTML = '';
+            
+            if (myChart.data.datasets.length > 0) {
+                const data = myChart.data.datasets[0].data;
+                const sum = data.reduce((a, b) => a + b, 0);
+                const avg = (sum / data.length).toFixed(2);
+                const max = Math.max(...data);
+                const min = Math.min(...data);
+                
+                const stats = [
+                    { label: 'Total', value: sum },
+                    { label: 'Average', value: avg },
+                    { label: 'Maximum', value: max },
+                    { label: 'Minimum', value: min },
+                    { label: 'Points', value: data.length }
+                ];
+                
+                stats.forEach(stat => {
+                    const card = document.createElement('div');
+                    card.className = 'stat-card';
+                    card.innerHTML = `
+                        <div class="stat-value">${stat.value}</div>
+                        <div class="stat-label">${stat.label}</div>
+                    `;
+                    container.appendChild(card);
+                });
+            }
+        }
+        
+        // Initial stats update
+        updateStats();
+    </script>
+</body>
+</html>

@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            margin: 0;
+        }
+        .form-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #1a202c;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #4a5568;
+            font-weight: 500;
+        }
+        input[type="text"],
+        input[type="email"],
+        input[type="number"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        input[type="checkbox"] {
+            margin-right: 10px;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s;
+        }
+        button:hover {
+            background: #5a67d8;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f7fafc;
+            border-radius: 8px;
+            display: none;
+        }
+        .result.show {
+            display: block;
+        }
+        .result h3 {
+            margin-top: 0;
+            color: #2d3748;
+        }
+        .result pre {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h1>📝 Dynamic Form Builder</h1>
+        
+        <form id="dynamicForm">
+            <!-- Dynamic fields will be inserted here -->
+            <div id="formFields"></div>
+            
+            <button type="submit">Submit Form</button>
+        </form>
+        
+        <div id="result" class="result">
+            <h3>Form Submission Result:</h3>
+            <pre id="resultData"></pre>
+        </div>
+    </div>
+    
+    <script>
+        // Form fields configuration (will be replaced by template)
+        const fields = {{ fields_json }};
+        
+        // Generate form fields
+        function generateFormFields() {
+            const container = document.getElementById('formFields');
+            
+            fields.forEach(field => {
+                const group = document.createElement('div');
+                group.className = 'form-group';
+                
+                if (field.type === 'checkbox') {
+                    const checkboxGroup = document.createElement('div');
+                    checkboxGroup.className = 'checkbox-group';
+                    
+                    const input = document.createElement('input');
+                    input.type = 'checkbox';
+                    input.id = field.name;
+                    input.name = field.name;
+                    if (field.required) input.required = true;
+                    
+                    const label = document.createElement('label');
+                    label.htmlFor = field.name;
+                    label.textContent = field.label;
+                    
+                    checkboxGroup.appendChild(input);
+                    checkboxGroup.appendChild(label);
+                    group.appendChild(checkboxGroup);
+                } else if (field.type === 'select') {
+                    const label = document.createElement('label');
+                    label.htmlFor = field.name;
+                    label.textContent = field.label;
+                    if (field.required) label.textContent += ' *';
+                    
+                    const select = document.createElement('select');
+                    select.id = field.name;
+                    select.name = field.name;
+                    if (field.required) select.required = true;
+                    
+                    // Add default option
+                    const defaultOption = document.createElement('option');
+                    defaultOption.value = '';
+                    defaultOption.textContent = field.placeholder || 'Select an option';
+                    select.appendChild(defaultOption);
+                    
+                    // Add field options
+                    if (field.options) {
+                        field.options.forEach(opt => {
+                            const option = document.createElement('option');
+                            option.value = opt;
+                            option.textContent = opt;
+                            select.appendChild(option);
+                        });
+                    }
+                    
+                    group.appendChild(label);
+                    group.appendChild(select);
+                } else if (field.type === 'textarea') {
+                    const label = document.createElement('label');
+                    label.htmlFor = field.name;
+                    label.textContent = field.label;
+                    if (field.required) label.textContent += ' *';
+                    
+                    const textarea = document.createElement('textarea');
+                    textarea.id = field.name;
+                    textarea.name = field.name;
+                    textarea.rows = 4;
+                    textarea.placeholder = field.placeholder || '';
+                    if (field.required) textarea.required = true;
+                    
+                    group.appendChild(label);
+                    group.appendChild(textarea);
+                } else {
+                    const label = document.createElement('label');
+                    label.htmlFor = field.name;
+                    label.textContent = field.label;
+                    if (field.required) label.textContent += ' *';
+                    
+                    const input = document.createElement('input');
+                    input.type = field.type || 'text';
+                    input.id = field.name;
+                    input.name = field.name;
+                    input.placeholder = field.placeholder || '';
+                    if (field.required) input.required = true;
+                    
+                    group.appendChild(label);
+                    group.appendChild(input);
+                }
+                
+                container.appendChild(group);
+            });
+        }
+        
+        // Handle form submission
+        document.getElementById('dynamicForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const data = {};
+            
+            // Convert FormData to object
+            for (let [key, value] of formData.entries()) {
+                data[key] = value;
+            }
+            
+            // Add checkbox values (unchecked boxes don't appear in FormData)
+            fields.forEach(field => {
+                if (field.type === 'checkbox') {
+                    const checkbox = document.getElementById(field.name);
+                    data[field.name] = checkbox.checked;
+                }
+            });
+            
+            // Display result
+            document.getElementById('resultData').textContent = JSON.stringify(data, null, 2);
+            document.getElementById('result').classList.add('show');
+            
+            // Send data to parent window (for MCP integration)
+            if (window.parent !== window) {
+                window.parent.postMessage({
+                    type: 'form-submission',
+                    data: data
+                }, '*');
+            }
+            
+            console.log('Form submitted:', data);
+        });
+        
+        // Initialize form
+        generateFormFields();
+    </script>
+</body>
+</html>

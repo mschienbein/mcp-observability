@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            margin: 0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #1a202c;
+            margin-bottom: 20px;
+        }
+        p {
+            color: #4a5568;
+            line-height: 1.6;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+        }
+        button:hover {
+            background: #5a67d8;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        .counter {
+            font-size: 48px;
+            font-weight: bold;
+            color: #667eea;
+            margin: 30px 0;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>{{ title }}</h1>
+        <p>{{ message }}</p>
+        
+        <div class="counter" id="counter">0</div>
+        
+        <div style="text-align: center;">
+            <button onclick="increment()">➕ Increment</button>
+            <button onclick="decrement()">➖ Decrement</button>
+            <button onclick="reset()">🔄 Reset</button>
+        </div>
+        
+        <p style="margin-top: 30px; padding: 20px; background: #f7fafc; border-radius: 8px;">
+            This is a simple UI component demonstrating basic interactivity. 
+            The counter state is maintained locally and updates instantly when you click the buttons.
+        </p>
+    </div>
+    
+    <script>
+        let count = 0;
+        
+        function updateCounter() {
+            document.getElementById('counter').textContent = count;
+        }
+        
+        function increment() {
+            count++;
+            updateCounter();
+        }
+        
+        function decrement() {
+            count--;
+            updateCounter();
+        }
+        
+        function reset() {
+            count = 0;
+            updateCounter();
+        }
+    </script>
+</body>
+</html>
