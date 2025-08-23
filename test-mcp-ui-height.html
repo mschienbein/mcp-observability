@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MCP UI Height Test</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      padding: 20px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .test-container {
+      border: 2px solid #ccc;
+      padding: 10px;
+      margin: 20px 0;
+      background: #f5f5f5;
+    }
+    .test-content {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+    }
+    .tall-content {
+      min-height: 600px;
+      background: linear-gradient(180deg, #e3f2fd 0%, #bbdefb 100%);
+      padding: 20px;
+      border-radius: 8px;
+    }
+    .debug-info {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background: rgba(0,0,0,0.8);
+      color: white;
+      padding: 10px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+      max-width: 300px;
+    }
+    button {
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    button:hover {
+      background: #1d4ed8;
+    }
+  </style>
+</head>
+<body>
+  <h1>MCP UI Height Test</h1>
+  
+  <div class="test-container">
+    <h2>Test 1: Simple Content</h2>
+    <div class="test-content">
+      <p>This is a simple test with normal height content.</p>
+      <p>The iframe should auto-size to this content.</p>
+    </div>
+  </div>
+
+  <div class="test-container">
+    <h2>Test 2: Tall Content</h2>
+    <div class="tall-content">
+      <h3>This is tall content that should expand the iframe</h3>
+      <p>Content line 1</p>
+      <p>Content line 2</p>
+      <p>Content line 3</p>
+      <p>Content line 4</p>
+      <p>Content line 5</p>
+      <p>Content line 6</p>
+      <p>Content line 7</p>
+      <p>Content line 8</p>
+      <p>Content line 9</p>
+      <p>Content line 10</p>
+      <p style="margin-top: 100px;">This paragraph has a large top margin</p>
+      <div style="position: absolute; bottom: 20px; right: 20px; background: yellow; padding: 10px;">
+        Absolutely positioned element
+      </div>
+    </div>
+  </div>
+
+  <div class="test-container">
+    <h2>Test 3: Dynamic Content</h2>
+    <div class="test-content" id="dynamic-content">
+      <p>Initial content</p>
+      <button onclick="addContent()">Add More Content</button>
+      <button onclick="removeContent()">Remove Content</button>
+      <div id="dynamic-area"></div>
+    </div>
+  </div>
+
+  <div class="debug-info">
+    <div>Document Height: <span id="doc-height">0</span>px</div>
+    <div>Body Height: <span id="body-height">0</span>px</div>
+    <div>ScrollHeight: <span id="scroll-height">0</span>px</div>
+    <div>Window Height: <span id="window-height">0</span>px</div>
+  </div>
+
+  <script>
+    // Update debug info
+    function updateDebugInfo() {
+      document.getElementById('doc-height').textContent = document.documentElement.offsetHeight;
+      document.getElementById('body-height').textContent = document.body.offsetHeight;
+      document.getElementById('scroll-height').textContent = document.body.scrollHeight;
+      document.getElementById('window-height').textContent = window.innerHeight;
+    }
+
+    // Dynamic content functions
+    let contentCount = 0;
+    function addContent() {
+      contentCount++;
+      const div = document.createElement('div');
+      div.className = 'dynamic-item';
+      div.style.padding = '10px';
+      div.style.margin = '10px 0';
+      div.style.background = '#e8f5e9';
+      div.style.borderRadius = '4px';
+      div.innerHTML = `<p>Dynamic content item ${contentCount}</p><p>This was added dynamically and should trigger a resize.</p>`;
+      document.getElementById('dynamic-area').appendChild(div);
+      updateDebugInfo();
+    }
+
+    function removeContent() {
+      const items = document.querySelectorAll('.dynamic-item');
+      if (items.length > 0) {
+        items[items.length - 1].remove();
+        updateDebugInfo();
+      }
+    }
+
+    // Initial update and periodic updates
+    updateDebugInfo();
+    setInterval(updateDebugInfo, 1000);
+
+    // Log when the page is loaded in an iframe
+    if (window.parent !== window) {
+      console.log('[Test Page] Loaded in iframe, dimensions:', {
+        documentHeight: document.documentElement.offsetHeight,
+        bodyHeight: document.body.offsetHeight,
+        scrollHeight: document.body.scrollHeight,
+        windowHeight: window.innerHeight
+      });
+    }
+  </script>
+</body>
+</html>

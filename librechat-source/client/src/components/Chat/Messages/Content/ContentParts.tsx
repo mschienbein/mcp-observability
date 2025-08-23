@@ -1,6 +1,6 @@
 import { memo, useMemo, useState } from 'react';
 import { useRecoilState } from 'recoil';
-import { ContentTypes } from 'librechat-data-provider';
+import { ContentTypes, ToolCallTypes } from 'librechat-data-provider';
 import type {
   TMessageContentParts,
   SearchResultData,
@@ -16,6 +16,9 @@ import { EditTextPart } from './Parts';
 import { useLocalize } from '~/hooks';
 import store from '~/store';
 import Part from './Part';
+import Container from './Container';
+import MCPUIResourceRenderer from '~/components/MCP/MCPUIResourceRenderer';
+import { detectMCPUIResource } from './MCPUIDetector';
 
 type ContentPartsProps = {
   content: Array<TMessageContentParts | undefined> | undefined;
@@ -140,6 +143,24 @@ const ContentParts = memo(
                 (part?.[ContentTypes.TOOL_CALL] as Agents.ToolCall | undefined)?.id ?? '';
               const attachments = attachmentMap[toolCallId];
 
+              // Determine if we should render an MCP UI resource inline AFTER this part
+              // We only do this when the current part is TEXT and the immediately previous
+              // part is a TOOL_CALL whose output contains an MCP UI resource.
+              let mcpResourceAfterText: ReturnType<typeof detectMCPUIResource> | null = null;
+              if (idx > 0 && part?.type === ContentTypes.TEXT) {
+                const prev = content[idx - 1];
+                const prevToolCall = prev?.[ContentTypes.TOOL_CALL] as Agents.ToolCall | undefined;
+                const prevIsToolCall =
+                  !!prevToolCall && (!prevToolCall.type || prevToolCall.type === ToolCallTypes.TOOL_CALL);
+                const prevOutput = (prevToolCall?.output ?? '') as string;
+                if (prevIsToolCall && typeof prevOutput === 'string' && prevOutput.length > 0) {
+                  const detected = detectMCPUIResource(prevOutput);
+                  if (detected.isMCPResource && detected.resource) {
+                    mcpResourceAfterText = detected;
+                  }
+                }
+              }
+
               return (
                 <MessageContext.Provider
                   key={`provider-${messageId}-${idx}`}
@@ -151,15 +172,26 @@ const ContentParts = memo(
                     nextType: content[idx + 1]?.type,
                   }}
                 >
-                  <Part
-                    part={part}
-                    attachments={attachments}
-                    isSubmitting={isSubmitting}
-                    key={`part-${messageId}-${idx}`}
-                    isCreatedByUser={isCreatedByUser}
-                    isLast={idx === content.length - 1}
-                    showCursor={idx === content.length - 1 && isLast}
-                  />
+                  <>
+                    <Part
+                      part={part}
+                      attachments={attachments}
+                      isSubmitting={isSubmitting}
+                      key={`part-${messageId}-${idx}`}
+                      isCreatedByUser={isCreatedByUser}
+                      isLast={idx === content.length - 1}
+                      showCursor={idx === content.length - 1 && isLast}
+                    />
+                    {mcpResourceAfterText && mcpResourceAfterText.resource && (
+                      <div className="text-message flex flex-col overflow-visible [.text-message+&]:mt-5" dir="auto">
+                        <div className="w-full p-2">
+                          <MCPUIResourceRenderer 
+                            resource={mcpResourceAfterText.resource}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </>
                 </MessageContext.Provider>
               );
             })}

@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Optional
 from fastmcp import FastMCP, Context
 from langfuse import get_client
-from server.common.mcp_obs_middleware import trace_index, _pick_session_id
+from mcp_local.common.mcp_obs_middleware import trace_index, _pick_session_id
 
 
 def register_feedback_tools(mcp: FastMCP):

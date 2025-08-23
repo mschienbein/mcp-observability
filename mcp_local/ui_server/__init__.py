@@ -1,0 +1,1 @@
+# MCP UI Server - Provides tools that return UI resources

@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  mcp-chat-ui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      # AWS Bedrock Configuration
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      
+      # MCP Server Configuration (JSON array)
+      - MCP_SERVERS=${MCP_SERVERS:-'[]'}
+      
+      # Application Configuration
+      - NEXT_PUBLIC_APP_NAME=MCP Chat UI
+      - NEXT_PUBLIC_APP_DESCRIPTION=Chat interface with MCP tool integration
+      
+      # Optional: Langfuse Observability
+      - LANGFUSE_PUBLIC_KEY=${LANGFUSE_PUBLIC_KEY:-}
+      - LANGFUSE_SECRET_KEY=${LANGFUSE_SECRET_KEY:-}
+      - LANGFUSE_HOST=${LANGFUSE_HOST:-}
+      
+      # NextAuth (for production)
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-development-secret-change-in-production}
+      
+      # Default Model
+      - DEFAULT_MODEL=${DEFAULT_MODEL:-anthropic.claude-3-sonnet-20240229-v1:0}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

@@ -16,6 +16,7 @@ import WebSearch from './WebSearch';
 import ToolCall from './ToolCall';
 import ImageGen from './ImageGen';
 import Image from './Image';
+ 
 
 type PartProps = {
   part?: TMessageContentParts;

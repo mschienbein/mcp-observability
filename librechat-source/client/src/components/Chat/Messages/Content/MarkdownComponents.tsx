@@ -1,15 +1,17 @@
-import React, { memo, useMemo, useRef, useEffect, useState } from 'react';
+import React, { memo, useMemo, useRef, useEffect } from 'react';
 import { useRecoilValue } from 'recoil';
 import { useToastContext } from '@librechat/client';
 import { PermissionTypes, Permissions } from 'librechat-data-provider';
-import { UIResourceRenderer } from '@mcp-ui/client';
+import MCPUIResourceRenderer from '~/components/MCP/MCPUIResourceRenderer';
+import MCPUILink from '~/components/MCP/MCPUILink';
 import CodeBlock from '~/components/Messages/Content/CodeBlock';
 import useHasAccess from '~/hooks/Roles/useHasAccess';
 import { useFileDownload } from '~/data-provider';
-import { useCodeBlockContext, useMCPResources } from '~/Providers';
+import { useCodeBlockContext } from '~/Providers';
 import { handleDoubleClick } from '~/utils';
 import { useLocalize } from '~/hooks';
 import store from '~/store';
+import type { MCPResource } from '~/Providers/MCPResourceContext';
 
 type TCodeProps = {
   inline?: boolean;
@@ -62,7 +64,7 @@ export const code: React.ElementType = memo(({ className, children }: TCodeProps
       console.log('MCP UI Component Detected! Rendering with UIResourceRenderer');
       
       // Create a resource object for the MCP UI SDK
-      const resource = {
+      const resource: MCPResource = {
         uri: 'ui://inline/html-block',
         name: 'Interactive Component',
         mimeType: 'text/html',
@@ -71,7 +73,7 @@ export const code: React.ElementType = memo(({ className, children }: TCodeProps
       
       return (
         <div className="my-4">
-          <UIResourceRenderer
+          <MCPUIResourceRenderer
             resource={resource}
             onUIAction={(result: any) => {
               console.log('MCP UI Action from HTML block:', result);
@@ -123,58 +125,6 @@ type TAnchorProps = {
   href: string;
   children: React.ReactNode;
 };
-
-// Component to render MCP UI resources from ui:// links
-const MCPUILink: React.FC<{ href: string; children: React.ReactNode }> = memo(({ href, children }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const { getResource } = useMCPResources();
-  
-  const handleClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsOpen(!isOpen);
-  };
-  
-  // Get the resource from the store
-  const resource = useMemo(() => {
-    return getResource(href);
-  }, [href, getResource]);
-  
-  // If no resource is stored, render as a regular link
-  if (!resource) {
-    return (
-      <a 
-        href={href} 
-        className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline"
-        title={`MCP UI Resource: ${href}`}
-      >
-        {children}
-      </a>
-    );
-  }
-  
-  return (
-    <>
-      <a 
-        href={href} 
-        onClick={handleClick}
-        className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline cursor-pointer inline-flex items-center gap-1"
-      >
-        <span>{children}</span>
-        <span className="text-xs">{isOpen ? '▼' : '▶'}</span>
-      </a>
-      {isOpen && resource && (
-        <div className="my-2">
-          <UIResourceRenderer
-            resource={resource}
-            onUIAction={(result: any) => {
-              console.log('MCP UI Action from link:', result);
-            }}
-          />
-        </div>
-      )}
-    </>
-  );
-});
 
 export const a: React.ElementType = memo(({ href, children }: TAnchorProps) => {
   const user = useRecoilValue(store.user);

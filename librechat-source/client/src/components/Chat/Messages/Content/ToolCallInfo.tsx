@@ -1,5 +1,4 @@
-import React, { useEffect } from 'react';
-import { UIResourceRenderer } from '@mcp-ui/client';
+import React, { useEffect, useMemo } from 'react';
 import { useLocalize } from '~/hooks';
 import { useMCPResources } from '~/Providers';
 import { detectMCPUIResource } from './MCPUIDetector';
@@ -35,7 +34,7 @@ export default function ToolCallInfo({
   pendingAuth?: boolean;
 }) {
   const localize = useLocalize();
-  const { addResource } = useMCPResources();
+  const { addResource, getResource } = useMCPResources();
   
   const formatText = (text: string) => {
     try {
@@ -56,9 +55,10 @@ export default function ToolCallInfo({
         : localize('com_assistants_attempt_info');
   }
 
-  // Check if output is an MCP UI resource
-  const mcpResource = detectMCPUIResource(output);
-  
+  // Check if output is an MCP UI resource (memoized to avoid new object each render)
+  const mcpResource = useMemo(() => detectMCPUIResource(output), [output]);
+  console.log('ToolCallInfo - Output:', output);
+  console.log('ToolCallInfo - MCP Resource:', mcpResource);
   // Debug logging
   console.log('ToolCallInfo - Checking output for MCP UI:', {
     function_name,
@@ -71,10 +71,17 @@ export default function ToolCallInfo({
   // Store the resource if it's an MCP UI resource
   useEffect(() => {
     if (mcpResource.isMCPResource && mcpResource.resource) {
-      console.log('ToolCallInfo - Storing MCP UI resource:', mcpResource.resource.uri);
-      addResource(mcpResource.resource);
+      const uri = mcpResource.resource.uri as string | undefined;
+      if (!uri) {
+        return;
+      }
+      const existing = getResource(uri);
+      if (!existing) {
+        console.log('ToolCallInfo - Storing MCP UI resource:', uri);
+        addResource(mcpResource.resource);
+      }
     }
-  }, [mcpResource, addResource]);
+  }, [output, mcpResource.isMCPResource, mcpResource.resource, addResource, getResource]);
 
   return (
     <div className="w-full p-2">
@@ -85,25 +92,31 @@ export default function ToolCallInfo({
         </div>
         {output && (
           <>
-            {mcpResource.isMCPResource && mcpResource.resource ? (
-              // Render MCP UI resource as interactive HTML
-              <UIResourceRenderer 
-                resource={mcpResource.resource}
-                onUIAction={(result: any) => {
-                  console.log('MCP UI Action:', result);
-                }}
-              />
-            ) : (
-              // Render normal output as code block
-              <>
-                <div className="my-2 text-sm font-medium text-text-primary">
-                  {localize('com_ui_result')}
-                </div>
-                <div>
-                  <OptimizedCodeBlock text={formatText(output)} maxHeight={250} />
-                </div>
-              </>
-            )}
+            <div className="my-2 text-sm font-medium text-text-primary">
+              {localize('com_ui_result')}
+            </div>
+            <div>
+              {mcpResource.isMCPResource && mcpResource.resource ? (
+                // Show cleaned summary JSON of the detected MCP UI resource
+                <OptimizedCodeBlock
+                  text={formatText(
+                    JSON.stringify(
+                      {
+                        kind: 'mcp_ui_resource',
+                        uri: mcpResource.resource.uri,
+                        title: mcpResource.resource.title,
+                        description: mcpResource.resource.description,
+                      },
+                      null,
+                      2,
+                    ),
+                  )}
+                  maxHeight={250}
+                />
+              ) : (
+                <OptimizedCodeBlock text={formatText(output)} maxHeight={250} />
+              )}
+            </div>
           </>
         )}
       </div>

@@ -8,6 +8,9 @@ import { AttachmentGroup } from './Parts';
 import ToolCallInfo from './ToolCallInfo';
 import ProgressText from './ProgressText';
 import { logger, cn } from '~/utils';
+import { useMCPResources } from '~/Providers';
+import { detectMCPUIResource } from './MCPUIDetector';
+ 
 
 export default function ToolCall({
   initialProgress = 0.1,
@@ -131,6 +134,35 @@ export default function ToolCall({
       return () => clearTimeout(timer);
     }
   }, [showInfo]);
+
+  // Detect and store MCP UI resource as soon as output arrives (even when collapsed)
+  const { addResource, getResource } = useMCPResources();
+  const processedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!output) {
+      return;
+    }
+    // Prevent re-processing same output repeatedly
+    if (processedRef.current === output) {
+      return;
+    }
+    try {
+      const mcpResource = detectMCPUIResource(output);
+      if (mcpResource.isMCPResource && mcpResource.resource) {
+        console.log('ToolCall - Detected MCP UI resource at ToolCall level:', mcpResource.resource.uri);
+        // Add to context if not already present
+        const existing = getResource(mcpResource.resource.uri as string);
+        if (!existing) {
+          addResource(mcpResource.resource);
+        }
+        // Do not auto-expand; keep dropdown collapsed unless user opens it
+        // Mark as processed
+        processedRef.current = output;
+      }
+    } catch (e) {
+      logger.error('ToolCall - MCP UI resource detection failed', e);
+    }
+  }, [output, addResource, getResource]);
 
   useEffect(() => {
     if (!contentRef.current) {

@@ -1,11 +1,11 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import type { Resource } from '@modelcontextprotocol/sdk/types.js';
 
-interface MCPResource {
-  uri: string;
-  name: string;
-  mimeType: string;
-  text: string;
-}
+export type MCPResource = Partial<Resource> & {
+  text?: string;
+  code?: string;
+  [key: string]: unknown;
+};
 
 interface MCPResourceContextType {
   resources: Map<string, MCPResource>;
@@ -22,6 +22,10 @@ export const MCPResourceProvider: React.FC<{ children: ReactNode }> = ({ childre
   const addResource = useCallback((resource: MCPResource) => {
     setResources(prev => {
       const newMap = new Map(prev);
+      // Ensure we have a URI to key this resource
+      if (!resource.uri) {
+        return newMap;
+      }
       newMap.set(resource.uri, resource);
       return newMap;
     });

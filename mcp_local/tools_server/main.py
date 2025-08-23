@@ -2,8 +2,8 @@ import uvicorn
 from fastmcp import FastMCP
 from fastmcp.server.http import create_streamable_http_app
 from starlette.middleware import Middleware
-from server.common import config  # Load environment variables
-from server.common.mcp_obs_middleware import MCPObservabilityMiddleware
+from mcp_local.common import config  # Load environment variables
+from mcp_local.common.mcp_obs_middleware import MCPObservabilityMiddleware
 from .tools import register_dummy_tools
 
 mcp = FastMCP("DemoMCP-Tools")
@@ -17,4 +17,4 @@ app = create_streamable_http_app(
 )
 
 if __name__ == "__main__":
-    uvicorn.run("server.tools_server.main:app", host="0.0.0.0", port=3002, reload=True)
+    uvicorn.run("mcp_local.tools_server.main:app", host="0.0.0.0", port=3002, reload=True)
