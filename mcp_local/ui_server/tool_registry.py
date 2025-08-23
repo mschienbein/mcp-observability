@@ -6,7 +6,7 @@ import importlib
 import logging
 from pathlib import Path
 from typing import Dict, Any, List, Callable
-from mcp.server import Server
+from fastmcp import FastMCP
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +47,7 @@ class ToolRegistry:
             
             try:
                 # Import the tool module
-                module_name = f"tools.{tool_dir.name}.tool"
+                module_name = f"mcp_local.ui_server.tools.{tool_dir.name}.tool"
                 module = importlib.import_module(module_name)
                 
                 # Check for TOOL_DEFINITION
@@ -70,9 +70,9 @@ class ToolRegistry:
         
         return discovered
     
-    def register_with_mcp(self, mcp_server: Server) -> None:
+    def register_with_mcp(self, mcp_server: FastMCP) -> None:
         """
-        Register all discovered tools with an MCP server.
+        Register all discovered tools with a FastMCP server.
         
         Args:
             mcp_server: The MCP server instance to register tools with
@@ -104,7 +104,7 @@ class ToolRegistry:
 registry = ToolRegistry()
 
 
-def initialize_tools(mcp_server: Server, tools_dir: Path = None) -> ToolRegistry:
+def initialize_tools(mcp_server: FastMCP, tools_dir: Path = None) -> ToolRegistry:
     """
     Initialize and register all tools with the MCP server.
     

@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Remote DOM Component</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f0f4f8;
+            min-height: 400px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        /* Custom element styles */
+        ui-card {
+            display: block;
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 10px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        ui-button {
+            display: inline-block;
+            background: var(--bg-color, #667eea);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 5px;
+            user-select: none;
+            transition: all 0.3s;
+        }
+        ui-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        ui-button[variant="success"] {
+            --bg-color: #48bb78;
+        }
+        ui-button[variant="danger"] {
+            --bg-color: #f56565;
+        }
+        ui-input {
+            display: block;
+            width: 100%;
+            margin: 10px 0;
+        }
+        ui-input input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        ui-output {
+            display: block;
+            padding: 15px;
+            background: #edf2f7;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔌 Remote DOM Components</h1>
+        <div id="remote-root"></div>
+    </div>
+    
+    <script>
+        // Define custom web components
+        class UIButton extends HTMLElement {
+            constructor() {
+                super();
+                this.addEventListener('click', this.handleClick.bind(this));
+            }
+            
+            connectedCallback() {
+                this.textContent = this.getAttribute('label') || 'Button';
+            }
+            
+            handleClick(event) {
+                const eventName = this.getAttribute('event') || 'press';
+                const data = {
+                    component: 'ui-button',
+                    label: this.getAttribute('label'),
+                    variant: this.getAttribute('variant'),
+                    timestamp: new Date().toISOString()
+                };
+                
+                // Dispatch custom event
+                this.dispatchEvent(new CustomEvent(eventName, { 
+                    detail: data,
+                    bubbles: true 
+                }));
+                
+                // Send to parent window for MCP integration
+                if (window.parent !== window) {
+                    window.parent.postMessage({
+                        type: 'remote-dom-event',
+                        event: eventName,
+                        data: data,
+                        messageId: '{{ resource_id }}'
+                    }, '*');
+                }
+                
+                console.log('UIButton clicked:', data);
+            }
+        }
+        
+        class UIInput extends HTMLElement {
+            constructor() {
+                super();
+                this.input = null;
+            }
+            
+            connectedCallback() {
+                const placeholder = this.getAttribute('placeholder') || '';
+                const value = this.getAttribute('value') || '';
+                
+                this.innerHTML = `<input type="text" placeholder="${placeholder}" value="${value}">`;
+                this.input = this.querySelector('input');
+                
+                this.input.addEventListener('input', (e) => {
+                    const data = {
+                        component: 'ui-input',
+                        value: e.target.value,
+                        placeholder: placeholder
+                    };
+                    
+                    this.dispatchEvent(new CustomEvent('change', {
+                        detail: data,
+                        bubbles: true
+                    }));
+                    
+                    if (window.parent !== window) {
+                        window.parent.postMessage({
+                            type: 'remote-dom-event',
+                            event: 'input-change',
+                            data: data,
+                            messageId: '{{ resource_id }}'
+                        }, '*');
+                    }
+                });
+            }
+            
+            get value() {
+                return this.input ? this.input.value : '';
+            }
+            
+            set value(val) {
+                if (this.input) this.input.value = val;
+            }
+        }
+        
+        class UICard extends HTMLElement {
+            connectedCallback() {
+                const title = this.getAttribute('title');
+                if (title) {
+                    const header = document.createElement('h2');
+                    header.textContent = title;
+                    this.prepend(header);
+                }
+            }
+        }
+        
+        class UIOutput extends HTMLElement {
+            set value(val) {
+                this.textContent = val;
+            }
+            
+            get value() {
+                return this.textContent;
+            }
+        }
+        
+        // Register custom elements
+        customElements.define('ui-button', UIButton);
+        customElements.define('ui-input', UIInput);
+        customElements.define('ui-card', UICard);
+        customElements.define('ui-output', UIOutput);
+        
+        // Initialize the remote DOM
+        function initializeRemoteDOM() {
+            const root = document.getElementById('remote-root');
+            
+            // Create a card container
+            const card = document.createElement('ui-card');
+            card.setAttribute('title', 'Interactive Controls');
+            
+            // Create input field
+            const input = document.createElement('ui-input');
+            input.setAttribute('placeholder', 'Type something...');
+            
+            // Create buttons
+            const button1 = document.createElement('ui-button');
+            button1.setAttribute('label', '{{ button_label }}');
+            button1.setAttribute('event', 'primary-action');
+            
+            const button2 = document.createElement('ui-button');
+            button2.setAttribute('label', 'Success Action');
+            button2.setAttribute('variant', 'success');
+            button2.setAttribute('event', 'success-action');
+            
+            const button3 = document.createElement('ui-button');
+            button3.setAttribute('label', 'Danger Action');
+            button3.setAttribute('variant', 'danger');
+            button3.setAttribute('event', 'danger-action');
+            
+            // Create output display
+            const output = document.createElement('ui-output');
+            output.textContent = 'Events will appear here...';
+            
+            // Add event listeners
+            root.addEventListener('primary-action', (e) => {
+                output.value = `Primary action triggered: ${JSON.stringify(e.detail)}`;
+            });
+            
+            root.addEventListener('success-action', (e) => {
+                output.value = `Success! Input value: "${input.value}"`;
+            });
+            
+            root.addEventListener('danger-action', (e) => {
+                output.value = 'Danger action executed!';
+                input.value = '';
+            });
+            
+            root.addEventListener('change', (e) => {
+                if (e.detail.component === 'ui-input') {
+                    output.value = `Input changed: "${e.detail.value}"`;
+                }
+            });
+            
+            // Assemble the DOM
+            card.appendChild(input);
+            card.appendChild(button1);
+            card.appendChild(button2);
+            card.appendChild(button3);
+            card.appendChild(output);
+            root.appendChild(card);
+            
+            // Create a second card with different components
+            const card2 = document.createElement('ui-card');
+            card2.setAttribute('title', 'Message Logger');
+            
+            const logger = document.createElement('ui-output');
+            logger.textContent = 'Waiting for events...';
+            
+            // Listen for all events on the root element to log them
+            root.addEventListener('primary-action', (e) => {
+                logger.value = `[LOG] Primary: ${JSON.stringify(e.detail)}`;
+            });
+            
+            root.addEventListener('success-action', (e) => {
+                logger.value = `[LOG] Success: ${JSON.stringify(e.detail)}`;
+            });
+            
+            root.addEventListener('danger-action', (e) => {
+                logger.value = `[LOG] Danger: ${JSON.stringify(e.detail)}`;
+            });
+            
+            root.addEventListener('change', (e) => {
+                if (e.detail?.component === 'ui-input') {
+                    logger.value = `[LOG] Input: "${e.detail.value}"`;
+                }
+            });
+            
+            card2.appendChild(logger);
+            root.appendChild(card2);
+        }
+        
+        // Initialize when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeRemoteDOM);
+        } else {
+            initializeRemoteDOM();
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>File Viewer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markdown.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-yaml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+    <style>
+        body {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            margin: 0;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            min-height: 100vh;
+        }
+        .file-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #2d2d30;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .file-header {
+            background: #007acc;
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .file-icon {
+            font-size: 24px;
+        }
+        .file-name {
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .file-meta {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+        .file-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .action-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.3s;
+        }
+        .action-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        .file-content {
+            padding: 0;
+            overflow-x: auto;
+        }
+        pre {
+            margin: 0;
+            background: #1e1e1e !important;
+        }
+        pre code {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace !important;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .line-numbers {
+            counter-reset: line;
+        }
+        .line-numbers code {
+            counter-increment: line;
+        }
+        .line-numbers code::before {
+            content: counter(line);
+            display: inline-block;
+            width: 3em;
+            margin-right: 1em;
+            color: #858585;
+            text-align: right;
+            border-right: 1px solid #404040;
+            padding-right: 0.5em;
+            margin-right: 1em;
+        }
+    </style>
+</head>
+<body>
+    <div class="file-container">
+        <div class="file-header">
+            <div class="file-info">
+                <span class="file-icon">{{ file_icon }}</span>
+                <div>
+                    <div class="file-name">{{ file_name }}</div>
+                    <div class="file-meta">{{ file_language }} • {{ file_lines }} lines • {{ file_size }}</div>
+                </div>
+            </div>
+            <div class="file-actions">
+                <button class="action-btn" onclick="copyToClipboard()">📋 Copy</button>
+                <button class="action-btn" onclick="toggleLineNumbers()">🔢 Lines</button>
+                <button class="action-btn" onclick="downloadFile()">💾 Download</button>
+            </div>
+        </div>
+        <div class="file-content">
+            <pre class="line-numbers"><code class="language-{{ language_class }}">{{ file_content }}</code></pre>
+        </div>
+    </div>
+    
+    <script>
+        let lineNumbersEnabled = true;
+        
+        function copyToClipboard() {
+            const codeElement = document.querySelector('code');
+            const text = codeElement.textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Code copied to clipboard!');
+            });
+        }
+        
+        function toggleLineNumbers() {
+            const pre = document.querySelector('pre');
+            lineNumbersEnabled = !lineNumbersEnabled;
+            if (lineNumbersEnabled) {
+                pre.classList.add('line-numbers');
+            } else {
+                pre.classList.remove('line-numbers');
+            }
+        }
+        
+        function downloadFile() {
+            const codeElement = document.querySelector('code');
+            const text = codeElement.textContent;
+            const blob = new Blob([text], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '{{ file_name }}';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        // Apply syntax highlighting
+        Prism.highlightAll();
+    </script>
+</body>
+</html>

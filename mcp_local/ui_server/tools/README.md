@@ -102,17 +102,16 @@ Templates use `{{ variable }}` syntax for placeholders that get replaced:
 - [x] form_builder - Fully refactored with auto-registration
 - [x] interactive_chart - Fully refactored with auto-registration
 - [x] data_table - Fully refactored with auto-registration
-- [ ] file_viewer - Pending
-- [ ] code_editor - Pending
-- [ ] markdown_viewer - Pending
-- [ ] canvas_drawing - Pending
-- [ ] base64_image - Pending
-- [ ] realtime_data - Pending
-- [ ] react_interactive - Pending
-- [ ] remote_dom - Pending
-- [ ] recharts_dashboard - Pending
-- [ ] cytoscape_network - Pending
-- [ ] generate_custom_ui - Pending
+- [x] file_viewer - Fully refactored with auto-registration
+- [x] markdown_viewer - Fully refactored with auto-registration
+- [x] canvas_drawing - Fully refactored with auto-registration
+- [x] base64_image - Fully refactored with auto-registration
+- [x] realtime_data - Fully refactored with auto-registration
+- [x] code_editor - Fully refactored with auto-registration
+- [x] react_interactive - Fully refactored with auto-registration
+- [x] recharts_dashboard - Fully refactored with auto-registration
+- [x] cytoscape_network - Fully refactored with auto-registration
+- [x] generate_custom_ui - Fully refactored with auto-registration
 
 ## Usage
 

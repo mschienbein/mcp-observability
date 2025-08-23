@@ -3,7 +3,7 @@
 import uuid
 from pathlib import Path
 from typing import Dict, Any
-from mcp import Context
+from fastmcp import Context
 
 # Load the HTML template
 TEMPLATE_PATH = Path(__file__).parent / "template.html"

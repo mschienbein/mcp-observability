@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Recharts Dashboard</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/prop-types@15.6/prop-types.min.js"></script>
+    <script src="https://unpkg.com/recharts@2.5.0/dist/Recharts.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f7fa;
+        }
+        .dashboard {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+        }
+        .chart-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 20px;
+        }
+        .chart-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .chart-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #2d3748;
+        }
+        .chart-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            justify-content: center;
+        }
+        .chart-button {
+            padding: 10px 20px;
+            background: white;
+            border: 2px solid #667eea;
+            color: #667eea;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        .chart-button:hover {
+            background: #667eea;
+            color: white;
+        }
+        .chart-button.active {
+            background: #667eea;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState } = React;
+        const { LineChart, Line, BarChart, Bar, AreaChart, Area, PieChart, Pie, 
+                XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } = Recharts;
+        
+        const COLORS = ['#667eea', '#48bb78', '#ed8936', '#38b2ac', '#f56565'];
+        
+        function Dashboard() {
+            const data = {{ chart_data }};
+            const [selectedChart, setSelectedChart] = useState('line');
+            
+            const pieData = [
+                { name: 'Product A', value: 400 },
+                { name: 'Product B', value: 300 },
+                { name: 'Product C', value: 300 },
+                { name: 'Product D', value: 200 }
+            ];
+            
+            return (
+                <div className="dashboard">
+                    <div className="header">
+                        <h1>📊 Recharts Dashboard</h1>
+                        <p>Interactive data visualization with multiple chart types</p>
+                    </div>
+                    
+                    <div className="chart-selector">
+                        <button 
+                            className={`chart-button ${selectedChart === 'line' ? 'active' : ''}`}
+                            onClick={() => setSelectedChart('line')}
+                        >
+                            Line Chart
+                        </button>
+                        <button 
+                            className={`chart-button ${selectedChart === 'bar' ? 'active' : ''}`}
+                            onClick={() => setSelectedChart('bar')}
+                        >
+                            Bar Chart
+                        </button>
+                        <button 
+                            className={`chart-button ${selectedChart === 'area' ? 'active' : ''}`}
+                            onClick={() => setSelectedChart('area')}
+                        >
+                            Area Chart
+                        </button>
+                        <button 
+                            className={`chart-button ${selectedChart === 'pie' ? 'active' : ''}`}
+                            onClick={() => setSelectedChart('pie')}
+                        >
+                            Pie Chart
+                        </button>
+                    </div>
+                    
+                    <div className="chart-grid">
+                        <div className="chart-card">
+                            <h3 className="chart-title">
+                                {selectedChart === 'line' && 'Sales Trend'}
+                                {selectedChart === 'bar' && 'Monthly Revenue'}
+                                {selectedChart === 'area' && 'Customer Growth'}
+                                {selectedChart === 'pie' && 'Product Distribution'}
+                            </h3>
+                            
+                            <ResponsiveContainer width="100%" height={300}>
+                                {selectedChart === 'line' && (
+                                    <LineChart data={data}>
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis dataKey="month" />
+                                        <YAxis />
+                                        <Tooltip />
+                                        <Legend />
+                                        <Line type="monotone" dataKey="sales" stroke="#667eea" strokeWidth={2} />
+                                        <Line type="monotone" dataKey="customers" stroke="#48bb78" strokeWidth={2} />
+                                    </LineChart>
+                                )}
+                                
+                                {selectedChart === 'bar' && (
+                                    <BarChart data={data}>
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis dataKey="month" />
+                                        <YAxis />
+                                        <Tooltip />
+                                        <Legend />
+                                        <Bar dataKey="revenue" fill="#667eea" />
+                                        <Bar dataKey="sales" fill="#48bb78" />
+                                    </BarChart>
+                                )}
+                                
+                                {selectedChart === 'area' && (
+                                    <AreaChart data={data}>
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis dataKey="month" />
+                                        <YAxis />
+                                        <Tooltip />
+                                        <Legend />
+                                        <Area type="monotone" dataKey="customers" stackId="1" stroke="#667eea" fill="#667eea" />
+                                        <Area type="monotone" dataKey="sales" stackId="1" stroke="#48bb78" fill="#48bb78" />
+                                    </AreaChart>
+                                )}
+                                
+                                {selectedChart === 'pie' && (
+                                    <PieChart>
+                                        <Pie
+                                            data={pieData}
+                                            cx="50%"
+                                            cy="50%"
+                                            labelLine={false}
+                                            label={(entry) => entry.name}
+                                            outerRadius={80}
+                                            fill="#8884d8"
+                                            dataKey="value"
+                                        >
+                                            {pieData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip />
+                                    </PieChart>
+                                )}
+                            </ResponsiveContainer>
+                        </div>
+                        
+                        <div className="chart-card">
+                            <h3 className="chart-title">Combined Metrics</h3>
+                            <ResponsiveContainer width="100%" height={300}>
+                                <LineChart data={data}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="month" />
+                                    <YAxis />
+                                    <Tooltip />
+                                    <Legend />
+                                    <Line type="monotone" dataKey="revenue" stroke="#667eea" strokeWidth={2} />
+                                    <Line type="monotone" dataKey="sales" stroke="#48bb78" strokeWidth={2} />
+                                    <Line type="monotone" dataKey="customers" stroke="#ed8936" strokeWidth={2} />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+        
+        ReactDOM.render(<Dashboard />, document.getElementById('root'));
+    </script>
+</body>
+</html>

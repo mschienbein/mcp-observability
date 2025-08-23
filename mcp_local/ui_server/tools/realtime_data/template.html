@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Real-time Data Monitor</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #1a1a2e;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px 12px 0 0;
+        }
+        .dashboard {
+            background: white;
+            padding: 20px;
+            border-radius: 0 0 12px 12px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #2d3748;
+            margin: 5px 0;
+        }
+        .stat-change {
+            font-size: 14px;
+            color: #48bb78;
+        }
+        .stat-change.negative {
+            color: #f56565;
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-top: 20px;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            background: #48bb78;
+            color: white;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Real-time Data Monitor</h1>
+            <span class="status">● LIVE</span>
+        </div>
+        <div class="dashboard">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Current Value</div>
+                    <div class="stat-value" id="currentValue">0</div>
+                    <div class="stat-change" id="currentChange">+0%</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Average</div>
+                    <div class="stat-value" id="avgValue">0</div>
+                    <div class="stat-change">Last 60 seconds</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Peak</div>
+                    <div class="stat-value" id="peakValue">0</div>
+                    <div class="stat-change">Maximum recorded</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Data Points</div>
+                    <div class="stat-value" id="dataPoints">0</div>
+                    <div class="stat-change">Total collected</div>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <canvas id="realtimeChart"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Initialize chart
+        const ctx = document.getElementById('realtimeChart').getContext('2d');
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Real-time Value',
+                    data: [],
+                    borderColor: '#667eea',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: {
+                        display: true,
+                        grid: { display: false }
+                    },
+                    y: {
+                        display: true,
+                        beginAtZero: true,
+                        grid: { color: 'rgba(0,0,0,0.05)' }
+                    }
+                }
+            }
+        });
+        
+        // Simulate real-time data
+        let dataHistory = [];
+        let peakValue = 0;
+        let dataCount = 0;
+        
+        function generateDataPoint() {
+            // Simulate realistic data with trends and noise
+            const time = new Date();
+            const baseValue = 50;
+            const trend = Math.sin(Date.now() / 10000) * 20;
+            const noise = (Math.random() - 0.5) * 10;
+            const value = Math.max(0, baseValue + trend + noise);
+            
+            return {
+                time: time.toLocaleTimeString(),
+                value: Math.round(value * 100) / 100
+            };
+        }
+        
+        function updateData() {
+            const newPoint = generateDataPoint();
+            dataHistory.push(newPoint);
+            dataCount++;
+            
+            // Keep only last 60 data points
+            if (dataHistory.length > 60) {
+                dataHistory.shift();
+                chart.data.labels.shift();
+                chart.data.datasets[0].data.shift();
+            }
+            
+            // Update chart
+            chart.data.labels.push(newPoint.time);
+            chart.data.datasets[0].data.push(newPoint.value);
+            chart.update('none'); // No animation for smooth updates
+            
+            // Update statistics
+            const currentValue = newPoint.value;
+            const previousValue = dataHistory[dataHistory.length - 2]?.value || currentValue;
+            const change = ((currentValue - previousValue) / previousValue * 100).toFixed(1);
+            
+            document.getElementById('currentValue').textContent = currentValue.toFixed(2);
+            document.getElementById('currentChange').textContent = (change >= 0 ? '+' : '') + change + '%';
+            document.getElementById('currentChange').className = change >= 0 ? 'stat-change' : 'stat-change negative';
+            
+            // Calculate average
+            const sum = dataHistory.reduce((acc, point) => acc + point.value, 0);
+            const avg = sum / dataHistory.length;
+            document.getElementById('avgValue').textContent = avg.toFixed(2);
+            
+            // Update peak
+            if (currentValue > peakValue) {
+                peakValue = currentValue;
+            }
+            document.getElementById('peakValue').textContent = peakValue.toFixed(2);
+            
+            // Update data points
+            document.getElementById('dataPoints').textContent = dataCount;
+        }
+        
+        // Start real-time updates
+        setInterval(updateData, 1000);
+        
+        // Initialize with some data
+        for (let i = 0; i < 10; i++) {
+            updateData();
+        }
+    </script>
+</body>
+</html>

@@ -5,9 +5,8 @@ Clean, minimal entry point that uses the tool registry.
 """
 
 import logging
-from pathlib import Path
-from mcp.server import Server
-from tool_registry import initialize_tools
+from fastmcp import FastMCP
+from mcp_local.ui_server.tool_registry import initialize_tools
 
 # Configure logging
 logging.basicConfig(
@@ -16,8 +15,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Initialize the MCP server
-mcp = Server("mcp-ui-server")
+# Initialize the FastMCP server
+mcp = FastMCP("mcp-ui-server")
 
 # Initialize and register all tools from the tools directory
 logger.info("Starting MCP UI Server...")

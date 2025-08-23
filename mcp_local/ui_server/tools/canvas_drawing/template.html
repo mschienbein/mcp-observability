@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Canvas Drawing App</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 620px;
+            overflow: hidden;
+        }
+        .container {
+            max-width: 800px;
+            height: 580px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            box-sizing: border-box;
+        }
+        h1 {
+            margin: 0 0 20px 0;
+            color: #333;
+        }
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .toolbar button {
+            padding: 8px 16px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .toolbar button.active {
+            background: #667eea;
+            color: white;
+        }
+        .color-picker {
+            width: 40px;
+            height: 40px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        canvas {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            cursor: crosshair;
+            display: block;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Canvas Drawing App</h1>
+        
+        <div class="toolbar">
+            <button class="active" data-tool="pen">✏️ Pen</button>
+            <button data-tool="eraser">🧹 Eraser</button>
+            <button data-tool="line">📏 Line</button>
+            <button data-tool="rect">▭ Rectangle</button>
+            <button data-tool="circle">⭕ Circle</button>
+            
+            <input type="color" class="color-picker" id="colorPicker" value="#667eea">
+            
+            <label>
+                Size: <input type="range" id="sizeSlider" min="1" max="50" value="5">
+                <span id="sizeDisplay">5</span>
+            </label>
+            
+            <button onclick="clearCanvas()">🗑️ Clear</button>
+            <button onclick="saveCanvas()">💾 Save</button>
+        </div>
+        
+        <canvas id="drawingCanvas" width="760" height="400"></canvas>
+    </div>
+    
+    <script>
+        const canvas = document.getElementById('drawingCanvas');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+        let currentTool = 'pen';
+        let currentColor = '#667eea';
+        let currentSize = 5;
+        let startX, startY;
+        
+        // Tool selection
+        document.querySelectorAll('[data-tool]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('[data-tool]').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentTool = btn.dataset.tool;
+            });
+        });
+        
+        // Color picker
+        document.getElementById('colorPicker').addEventListener('change', (e) => {
+            currentColor = e.target.value;
+        });
+        
+        // Size slider
+        document.getElementById('sizeSlider').addEventListener('input', (e) => {
+            currentSize = e.target.value;
+            document.getElementById('sizeDisplay').textContent = currentSize;
+        });
+        
+        // Drawing functions
+        canvas.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            startX = e.clientX - rect.left;
+            startY = e.clientY - rect.top;
+            
+            if (currentTool === 'pen' || currentTool === 'eraser') {
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+            }
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            if (!isDrawing) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            ctx.lineWidth = currentSize;
+            ctx.lineCap = 'round';
+            
+            if (currentTool === 'pen') {
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.strokeStyle = currentColor;
+                ctx.lineTo(x, y);
+                ctx.stroke();
+            } else if (currentTool === 'eraser') {
+                ctx.globalCompositeOperation = 'destination-out';
+                ctx.lineTo(x, y);
+                ctx.stroke();
+            }
+        });
+        
+        canvas.addEventListener('mouseup', (e) => {
+            if (!isDrawing) return;
+            isDrawing = false;
+            
+            const rect = canvas.getBoundingClientRect();
+            const endX = e.clientX - rect.left;
+            const endY = e.clientY - rect.top;
+            
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.strokeStyle = currentColor;
+            ctx.lineWidth = currentSize;
+            
+            if (currentTool === 'line') {
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+                ctx.lineTo(endX, endY);
+                ctx.stroke();
+            } else if (currentTool === 'rect') {
+                ctx.strokeRect(startX, startY, endX - startX, endY - startY);
+            } else if (currentTool === 'circle') {
+                const radius = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
+                ctx.beginPath();
+                ctx.arc(startX, startY, radius, 0, 2 * Math.PI);
+                ctx.stroke();
+            }
+        });
+        
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+        
+        function saveCanvas() {
+            const link = document.createElement('a');
+            link.download = 'drawing.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+    </script>
+</body>
+</html>

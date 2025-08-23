@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>React Interactive Component</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 500px;
+        }
+        #root {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 5px;
+            transition: all 0.3s;
+        }
+        .button:hover {
+            background: #5a67d8;
+            transform: translateY(-2px);
+        }
+        .button.secondary {
+            background: #48bb78;
+        }
+        .button.secondary:hover {
+            background: #38a169;
+        }
+        .counter {
+            font-size: 48px;
+            font-weight: bold;
+            color: #667eea;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 16px;
+            margin: 10px 0;
+        }
+        .todo-list {
+            list-style: none;
+            padding: 0;
+        }
+        .todo-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            margin: 5px 0;
+            background: #f7fafc;
+            border-radius: 8px;
+        }
+        .todo-item.completed {
+            opacity: 0.6;
+            text-decoration: line-through;
+        }
+        .checkbox {
+            margin-right: 10px;
+            width: 20px;
+            height: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useEffect, useCallback } = React;
+        
+        function InteractiveApp() {
+            const [count, setCount] = useState({{ initial_count }});
+            const [todos, setTodos] = useState([
+                { id: 1, text: 'Learn React', completed: true },
+                { id: 2, text: 'Build MCP UI', completed: false },
+                { id: 3, text: 'Deploy to production', completed: false }
+            ]);
+            const [newTodo, setNewTodo] = useState('');
+            
+            const increment = () => setCount(c => c + 1);
+            const decrement = () => setCount(c => c - 1);
+            const reset = () => setCount({{ initial_count }});
+            
+            const addTodo = () => {
+                if (newTodo.trim()) {
+                    setTodos([...todos, {
+                        id: Date.now(),
+                        text: newTodo,
+                        completed: false
+                    }]);
+                    setNewTodo('');
+                }
+            };
+            
+            const toggleTodo = (id) => {
+                setTodos(todos.map(todo =>
+                    todo.id === id ? { ...todo, completed: !todo.completed } : todo
+                ));
+            };
+            
+            const deleteTodo = (id) => {
+                setTodos(todos.filter(todo => todo.id !== id));
+            };
+            
+            // Send messages to parent
+            useEffect(() => {
+                if (window.parent !== window) {
+                    window.parent.postMessage({
+                        type: 'log',
+                        payload: { message: `Counter updated: ${count}` },
+                        messageId: '{{ resource_id }}'
+                    }, '*');
+                }
+            }, [count]);
+            
+            return (
+                <div className="card">
+                    <h1>⚛️ React Interactive Component</h1>
+                    
+                    <div>
+                        <h2>Counter</h2>
+                        <div className="counter">{count}</div>
+                        <div style={{ textAlign: 'center' }}>
+                            <button className="button" onClick={decrement}>-</button>
+                            <button className="button secondary" onClick={reset}>Reset</button>
+                            <button className="button" onClick={increment}>+</button>
+                        </div>
+                    </div>
+                    
+                    <div style={{ marginTop: '40px' }}>
+                        <h2>Todo List</h2>
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                            <input
+                                className="input"
+                                type="text"
+                                placeholder="Add a new todo..."
+                                value={newTodo}
+                                onChange={(e) => setNewTodo(e.target.value)}
+                                onKeyPress={(e) => e.key === 'Enter' && addTodo()}
+                            />
+                            <button className="button secondary" onClick={addTodo}>Add</button>
+                        </div>
+                        
+                        <ul className="todo-list">
+                            {todos.map(todo => (
+                                <li key={todo.id} className={`todo-item ${todo.completed ? 'completed' : ''}`}>
+                                    <input
+                                        className="checkbox"
+                                        type="checkbox"
+                                        checked={todo.completed}
+                                        onChange={() => toggleTodo(todo.id)}
+                                    />
+                                    <span style={{ flex: 1 }}>{todo.text}</span>
+                                    <button 
+                                        className="button" 
+                                        style={{ padding: '4px 8px', fontSize: '12px' }}
+                                        onClick={() => deleteTodo(todo.id)}
+                                    >
+                                        Delete
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                </div>
+            );
+        }
+        
+        ReactDOM.render(<InteractiveApp />, document.getElementById('root'));
+    </script>
+</body>
+</html>

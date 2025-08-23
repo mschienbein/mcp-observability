@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Network Visualization</title>
+    <script src="https://unpkg.com/cytoscape@3.27.0/dist/cytoscape.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .header {
+            background: #2d3748;
+            color: white;
+            padding: 20px;
+        }
+        .controls {
+            padding: 15px;
+            background: #f7fafc;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .button {
+            padding: 8px 16px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .button:hover {
+            background: #5a67d8;
+        }
+        .button.secondary {
+            background: #48bb78;
+        }
+        .button.secondary:hover {
+            background: #38a169;
+        }
+        #cy {
+            height: 500px;
+            background: #fafafa;
+        }
+        .info {
+            padding: 15px;
+            background: #edf2f7;
+            font-size: 14px;
+            color: #4a5568;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌐 Network Visualization</h1>
+            <p>Interactive graph visualization with Cytoscape.js</p>
+        </div>
+        
+        <div class="controls">
+            <button class="button" onclick="changeLayout('cose')">Cose Layout</button>
+            <button class="button" onclick="changeLayout('circle')">Circle Layout</button>
+            <button class="button" onclick="changeLayout('grid')">Grid Layout</button>
+            <button class="button" onclick="changeLayout('breadthfirst')">Tree Layout</button>
+            <button class="button secondary" onclick="resetZoom()">Reset View</button>
+            <button class="button secondary" onclick="fitToScreen()">Fit to Screen</button>
+        </div>
+        
+        <div id="cy"></div>
+        
+        <div class="info">
+            <strong>Interaction:</strong> Click and drag to pan • Scroll to zoom • Click nodes to select • Drag nodes to reposition
+        </div>
+    </div>
+    
+    <script>
+        const nodesData = {{ nodes_data }};
+        const edgesData = {{ edges_data }};
+        
+        // Prepare elements for Cytoscape
+        const elements = [
+            ...nodesData.map(node => ({
+                data: { id: node.id, label: node.label, group: node.group }
+            })),
+            ...edgesData.map((edge, i) => ({
+                data: { 
+                    id: `edge-${i}`, 
+                    source: edge.source, 
+                    target: edge.target, 
+                    label: edge.label 
+                }
+            }))
+        ];
+        
+        // Initialize Cytoscape
+        const cy = cytoscape({
+            container: document.getElementById('cy'),
+            elements: elements,
+            style: [
+                {
+                    selector: 'node',
+                    style: {
+                        'background-color': (ele) => {
+                            const group = ele.data('group');
+                            return group === 'core' ? '#667eea' : 
+                                   group === 'secondary' ? '#48bb78' : '#ed8936';
+                        },
+                        'label': 'data(label)',
+                        'color': '#fff',
+                        'text-valign': 'center',
+                        'text-halign': 'center',
+                        'font-size': '12px',
+                        'font-weight': 'bold',
+                        'width': 50,
+                        'height': 50,
+                        'border-width': 3,
+                        'border-color': '#fff'
+                    }
+                },
+                {
+                    selector: 'edge',
+                    style: {
+                        'width': 2,
+                        'line-color': '#cbd5e0',
+                        'target-arrow-color': '#cbd5e0',
+                        'target-arrow-shape': 'triangle',
+                        'curve-style': 'bezier',
+                        'label': 'data(label)',
+                        'font-size': '10px',
+                        'text-rotation': 'autorotate',
+                        'text-margin-y': -10
+                    }
+                },
+                {
+                    selector: 'node:selected',
+                    style: {
+                        'border-color': '#f56565',
+                        'border-width': 5
+                    }
+                }
+            ],
+            layout: {
+                name: 'cose',
+                animate: true,
+                animationDuration: 1000,
+                randomize: false
+            }
+        });
+        
+        // Layout functions
+        function changeLayout(layoutName) {
+            cy.layout({ 
+                name: layoutName, 
+                animate: true, 
+                animationDuration: 1000 
+            }).run();
+        }
+        
+        function resetZoom() {
+            cy.zoom(1);
+            cy.center();
+        }
+        
+        function fitToScreen() {
+            cy.fit();
+        }
+        
+        // Node click handler
+        cy.on('tap', 'node', function(evt) {
+            const node = evt.target;
+            console.log('Node clicked:', node.data());
+            
+            // Send message to parent if embedded
+            if (window.parent !== window) {
+                window.parent.postMessage({
+                    type: 'nodeClick',
+                    payload: { 
+                        nodeId: node.id(), 
+                        nodeData: node.data() 
+                    },
+                    messageId: '{{ resource_id }}'
+                }, '*');
+            }
+        });
+    </script>
+</body>
+</html>
